@@ -2,230 +2,348 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>RPG：大冒險 - 技能與裝備系統</title>
+    <title>永恆荒野 RPG - 最終整合版</title>
     <style>
-        body { background: #1a1a1a; color: white; display: flex; flex-direction: column; align-items: center; font-family: "Microsoft JhengHei", sans-serif; margin: 0; }
-        #game-container { position: relative; width: 600px; height: 400px; margin-top: 10px; }
+        body { background: #1a1a1a; color: white; display: flex; flex-direction: column; align-items: center; font-family: "Microsoft JhengHei", sans-serif; margin: 0; overflow: hidden; }
+        #game-container { position: relative; width: 600px; height: 400px; margin-top: 10px; transition: transform 0.1s; }
         canvas { border: 4px solid #333; background: #000; display: block; }
         
-        /* UI 介面 */
-        #ui { width: 580px; background: #222; padding: 10px; margin-top: 5px; border-radius: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .stats-panel { border-right: 1px solid #444; padding-right: 10px; }
-        .inventory-panel { padding-left: 5px; }
+        /* UI 樣式 */
+        #ui { width: 580px; background: #222; padding: 10px; margin-top: 5px; border-radius: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border: 1px solid #444; }
         .item-slot { font-size: 12px; color: #f1c40f; margin: 2px 0; }
-
-        /* 戰鬥畫面 */
-        #battle-screen { 
+        
+        /* 彈窗通用樣式 */
+        .overlay { 
             display: none; position: absolute; top: 0; left: 0; width: 600px; height: 400px; 
-            background: rgba(0,0,0,0.95); flex-direction: column; justify-content: space-around; align-items: center; z-index: 100;
+            background: rgba(0,0,0,0.9); flex-direction: column; justify-content: center; align-items: center; z-index: 100;
         }
+        
+        /* 戰鬥與商店 */
         .hp-bar { width: 200px; height: 12px; background: #400; border: 1px solid #fff; margin-top: 5px; }
         .hp-fill { height: 100%; background: #2ecc71; transition: width 0.3s; width: 100%; }
-        #battle-log { height: 60px; font-size: 14px; color: #ddd; text-align: center; padding: 0 20px; overflow-y: hidden; }
-        .btn { padding: 8px 15px; background: #333; color: white; border: 1px solid #fff; cursor: pointer; margin: 2px; font-size: 13px; }
-        .btn:hover { background: #555; }
+        #battle-log { height: 60px; font-size: 14px; color: #ddd; text-align: center; padding: 10px; }
+        .btn { padding: 8px 15px; background: #333; color: white; border: 1px solid #fff; cursor: pointer; margin: 5px; font-size: 13px; border-radius: 4px; }
+        .btn:hover { background: #555; border-color: #0fccff; }
+
+        /* 戰利品清單專用 */
+        #loot-list { display: flex; flex-direction: column; gap: 10px; width: 80%; }
+        .loot-item { background: #333; border: 1px solid #555; padding: 10px; display: flex; justify-content: space-between; align-items: center; border-radius: 4px; }
+
+        /* 特效 */
+        @keyframes shake { 0%, 100% { transform: translate(0,0); } 25% { transform: translate(4px,4px); } 50% { transform: translate(-4px,-4px); } 75% { transform: translate(4px,-4px); } }
+        .shake { animation: shake 0.1s linear infinite; }
+        #flash-effect { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 1000; pointer-events: none; opacity: 0.6; }
     </style>
 </head>
 <body>
 
-    <div id="game-container">
-        <canvas id="gameCanvas" width="600" height="400"></canvas>
-        <div id="battle-screen">
-            <h2 id="battle-title" style="color: #e74c3c;">遭遇敵襲</h2>
-            <div style="display: flex; width: 100%; justify-content: space-around;">
-                <div style="text-align:center">
-                    <div>勇者</div>
-                    <div class="hp-bar"><div id="p-hp-fill" class="hp-fill"></div></div>
-                    <div id="p-hp-text" style="font-size:12px"></div>
-                </div>
-                <div style="text-align:center">
-                    <div id="enemy-name">怪物</div>
-                    <div class="hp-bar"><div id="e-hp-fill" class="hp-fill"></div></div>
-                    <div id="e-hp-text" style="font-size:12px"></div>
-                </div>
+<div id="flash-effect"></div>
+
+<div id="game-container">
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+
+    <div id="battle-screen" class="overlay">
+        <h2 id="enemy-name" style="color: #e74c3c;">遭遇敵人</h2>
+        <div style="display: flex; width: 100%; justify-content: space-around;">
+            <div style="text-align:center">
+                <div>勇者</div>
+                <div class="hp-bar"><div id="p-hp-fill" class="hp-fill"></div></div>
+                <div id="p-hp-text" style="font-size:12px"></div>
             </div>
-            <div id="battle-log"></div>
-            <div>
-                <button class="btn" onclick="playerAttack()">攻擊</button>
-                <button class="btn" onclick="playerHeal()">藥水(<span id="pot-count">0</span>)</button>
+            <div style="text-align:center">
+                <div id="enemy-display-name">怪物</div>
+                <div class="hp-bar"><div id="e-hp-fill" class="hp-fill"></div></div>
+                <div id="e-hp-text" style="font-size:12px"></div>
             </div>
+        </div>
+        <div id="battle-log"></div>
+        <div class="actions">
+            <button class="btn" onclick="playerAttack()">1. 攻擊</button>
+            <button class="btn" onclick="playerHeal()">2. 藥水</button>
+            <button class="btn" onclick="tryEscape()">3. 逃跑</button>
         </div>
     </div>
 
-    <div id="ui">
-        <div class="stats-panel">
-            <div style="color:#0fccff">等級: <span id="lvl">1</span> (<span id="exp">0</span>/100 EXP)</div>
-            <div>攻擊: <span id="atk-val">15</span> | 防禦: <span id="def-val">5</span></div>
-            <div id="location-text" style="font-size:12px; color:#888">區域：探索中</div>
-        </div>
-        <div class="inventory-panel">
-            <div style="font-weight:bold; color:#f1c40f">裝備欄：</div>
-            <div class="item-slot">武器：<span id="eq-weapon">生鏽的劍 (+0)</span></div>
-            <div class="item-slot">防具：<span id="eq-armor">破舊的布衣 (+0)</span></div>
-        </div>
+    <div id="loot-screen" class="overlay">
+        <h2 style="color: #f1c40f;">戰利品</h2>
+        <div id="loot-list"></div>
+        <button class="btn" onclick="closeLoot()">全部放棄並離開</button>
     </div>
+
+    <div id="shop-screen" class="overlay">
+        <h2 style="color: #f1c40f;">村莊商店</h2>
+        <div style="color: #0fccff; margin-bottom: 10px;">金幣：<span id="gold-val">0</span></div>
+        <div style="display:flex; gap:10px; margin-bottom:10px;">
+            <button class="btn" onclick="buyPotion()">買藥水 (80G)</button>
+            <button class="btn" onclick="sellPotion()">賣藥水 (+50G)</button>
+        </div>
+        <div id="weapon-rack" style="display: flex; flex-wrap: wrap; justify-content: center;"></div>
+        <button class="btn" onclick="closeShop()">離開</button>
+    </div>
+</div>
+
+<div id="ui">
+    <div class="stats-panel">
+        <div style="color:#0fccff">Lv. <span id="lvl">1</span> | EXP: <span id="exp">0</span> | 金幣: <span id="gold-ui">0</span></div>
+        <div>ATK: <span id="atk-val">15</span> | DEF: <span id="def-val">5</span></div>
+        <div style="font-size:11px; color:#888">區域: [<span id="world-pos">0,0</span>] (黃格是商店)</div>
+    </div>
+    <div class="inventory-panel">
+        <div class="item-slot">武器：<span id="eq-weapon">木棒</span></div>
+        <div class="item-slot">防具：<span id="eq-armor">布衣</span></div>
+        <div id="sub-stats" style="font-size:11px; color:#aaa;">副屬性：無</div>
+    </div>
+</div>
 
 <script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const TILE_SIZE = 40;
-const MAP_SIZE = 20;
+const MAP_SIZE = 15;
+
+let worldData = {};
+let currentWorldX = 0, currentWorldY = 0;
 let map = [];
 
-// --- 數據庫 ---
-const monsters = {
-    "slime": { name: "史萊姆", hp: 40, atk: 8, def: 2, color: "#9b59b6", exp: 20, skill: { name: "分裂重組", msg: "史萊姆恢復了生命！", effect: (e) => e.hp = Math.min(e.maxHp, e.hp + 15) } },
-    "goblin": { name: "哥布林", hp: 60, atk: 15, def: 5, color: "#2ecc71", exp: 40, skill: { name: "連環刺擊", msg: "哥布林發動連擊！", effect: (p) => p.hp -= 10 } },
-    "orc": { name: "獸人", hp: 120, atk: 25, def: 10, color: "#e67e22", exp: 80, skill: { name: "狂暴一擊", msg: "獸人力量大增！", effect: (p) => p.hp -= 20 } }
-};
-
-const drops = [
-    { name: "鋼鐵長劍", type: "weapon", power: 10, chance: 0.2 },
-    { name: "騎士板甲", type: "armor", power: 8, chance: 0.15 },
-    { name: "龍之怒火", type: "weapon", power: 25, chance: 0.05 },
-    { name: "治癒藥水", type: "item", chance: 0.5 }
-];
-
-// --- 玩家與狀態 ---
+// 玩家數據
 const player = {
-    tx: 10, ty: 10, hp: 100, maxHp: 100, level: 1, exp: 0, 
-    baseAtk: 15, baseDef: 5,
-    potions: 3,
-    weapon: { name: "木棒", power: 2 },
-    armor: { name: "布衣", power: 1 }
+    tx: 7, ty: 7, hp: 100, maxHp: 100, level: 1, exp: 0, gold: 0,
+    baseAtk: 15, baseDef: 5, potions: 3,
+    weapon: { name: "木棒", power: 2, sub: null },
+    armor: { name: "布衣", power: 1, sub: null }
 };
 
-let enemy = null;
-let inBattle = false;
+// 怪物數據
+const monsters = {
+    "slime": { name: "史萊姆", hp: 40, atk: 8, def: 2, color: "#9b59b6", exp: 20 },
+    "goblin": { name: "哥布林", hp: 60, atk: 15, def: 5, color: "#2ecc71", exp: 40 },
+    "orc": { name: "獸人", hp: 120, atk: 25, def: 10, color: "#e67e22", exp: 80 }
+};
 
-// --- 核心邏輯 ---
-function generateMap() {
-    map = [];
+let inBattle = false, enemy = null, shopGoods = [], currentLoot = [];
+
+// --- 特效與輔助 ---
+function triggerCritEffect() {
+    const flash = document.getElementById("flash-effect");
+    const container = document.getElementById("game-container");
+    flash.style.display = "block";
+    setTimeout(() => flash.style.display = "none", 50);
+    container.classList.add("shake");
+    setTimeout(() => container.classList.remove("shake"), 200);
+}
+
+function generateSubStat() {
+    const stats = [
+        { name: "暴擊率", value: 5 + Math.floor(Math.random() * 10), unit: "%" },
+        { name: "額外生命", value: 20 + Math.floor(Math.random() * 30), unit: "" }
+    ];
+    return stats[Math.floor(Math.random() * stats.length)];
+}
+
+function log(msg) { document.getElementById("battle-log").innerHTML = msg; }
+
+// --- 地圖與區域 ---
+function loadRegion(wx, wy) {
+    const key = `${wx},${wy}`;
+    if (worldData[key]) return worldData[key];
+    let newMap = [];
     for (let y = 0; y < MAP_SIZE; y++) {
-        map[y] = [];
+        newMap[y] = [];
         for (let x = 0; x < MAP_SIZE; x++) {
             if (x === 0 || y === 0 || x === MAP_SIZE-1 || y === MAP_SIZE-1) {
-                map[y][x] = (Math.abs(x-10)<=1 || Math.abs(y-10)<=1) ? 0 : 1;
-            } else {
+                newMap[y][x] = (Math.abs(x-7)<=1 || Math.abs(y-7)<=1) ? 0 : 1;
+            } else if (wx === 0 && wy === 0 && x === 7 && y === 7) newMap[y][x] = "shop";
+            else {
                 let r = Math.random();
-                if (r < 0.1) map[y][x] = 1;
-                else if (r < 0.15) map[y][x] = Object.keys(monsters)[Math.floor(Math.random()*3)];
-                else map[y][x] = 0;
+                if (r < 0.1) newMap[y][x] = 1;
+                else if (r < 0.15) newMap[y][x] = Object.keys(monsters)[Math.floor(Math.random()*3)];
+                else newMap[y][x] = 0;
             }
         }
     }
+    worldData[key] = newMap;
+    return newMap;
 }
 
+function switchRegion(dx, dy) {
+    currentWorldX += dx; currentWorldY += dy;
+    map = loadRegion(currentWorldX, currentWorldY);
+    if (dx === 1) player.tx = 0; else if (dx === -1) player.tx = MAP_SIZE-1;
+    else if (dy === 1) player.ty = 0; else if (dy === -1) player.ty = MAP_SIZE-1;
+    updateUI();
+}
+
+// --- 戰鬥系統 ---
 function startBattle(x, y, type) {
     inBattle = true;
     let m = monsters[type];
     enemy = { ...m, maxHp: m.hp + (player.level*10), hp: m.hp + (player.level*10), pos: {x, y} };
-    
     document.getElementById("battle-screen").style.display = "flex";
-    document.getElementById("enemy-name").innerText = enemy.name;
-    document.getElementById("battle-log").innerText = `遭遇 ${enemy.name}！`;
+    document.getElementById("enemy-display-name").innerText = enemy.name;
+    log(`遭遇 ${enemy.name}！使用數字鍵 1-3 或點擊操作。`);
     updateUI();
 }
 
 function playerAttack() {
-    let atkPower = player.baseAtk + player.weapon.power;
-    let dmg = Math.max(5, atkPower - enemy.def + Math.floor(Math.random()*5));
+    if (!inBattle) return;
+    let critChance = (player.weapon.sub && player.weapon.sub.name === "暴擊率") ? player.weapon.sub.value / 100 : 0.05;
+    let isCrit = Math.random() < critChance;
+    if (isCrit) triggerCritEffect();
+    let dmg = Math.max(5, (player.baseAtk + player.weapon.power) - enemy.def) * (isCrit ? 2 : 1);
     enemy.hp -= dmg;
-    log(`你攻擊 ${enemy.name}，造成 ${dmg} 傷害。`);
-    
+    log(isCrit ? `<span style="color:red">暴擊！造成 ${dmg} 傷害</span>` : `造成 ${dmg} 傷害`);
+    updateUI();
     if (enemy.hp <= 0) return winBattle();
     setTimeout(enemyTurn, 600);
 }
 
 function enemyTurn() {
-    if (enemy.hp <= 0) return;
-    
-    // 怪物技能觸發 (25% 機率)
-    if (Math.random() < 0.25) {
-        log(`<span style="color:yellow">技能：${enemy.skill.name}！${enemy.skill.msg}</span>`);
-        enemy.skill.effect(enemy.skill.name === "分裂重組" ? enemy : player);
-    } else {
-        let defPower = player.baseDef + player.armor.power;
-        let dmg = Math.max(3, enemy.atk - defPower + Math.floor(Math.random()*5));
-        player.hp -= dmg;
-        log(`${enemy.name} 攻擊，造成 ${dmg} 傷害。`);
-    }
-    
+    if (enemy.hp <= 0 || !inBattle) return;
+    let dmg = Math.max(3, enemy.atk - (player.baseDef + player.armor.power));
+    player.hp -= dmg;
+    log(`${enemy.name} 反擊造成 ${dmg} 傷害`);
     updateUI();
-    if (player.hp <= 0) { alert("你冒險失敗了..."); location.reload(); }
+    if (player.hp <= 0) { alert("冒險結束！"); location.reload(); }
 }
 
-function winBattle() {
-    log(`<span style="color:#0f0">勝利！獲得 ${enemy.exp} 經驗。</span>`);
-    player.exp += enemy.exp;
-    map[enemy.pos.y][enemy.pos.x] = 0;
-    
-    // 掉落檢查
-    drops.forEach(item => {
-        if (Math.random() < item.chance) {
-            if (item.type === "item") {
-                player.potions++;
-                log(`獲得了 [${item.name}]！`);
-            } else {
-                let currentPower = item.type === "weapon" ? player.weapon.power : player.armor.power;
-                if (item.power > currentPower) {
-                    if (item.type === "weapon") player.weapon = item;
-                    else player.armor = item;
-                    log(`<span style="color:cyan">拾獲並裝備了 [${item.name}]！</span>`);
-                }
-            }
-        }
-    });
-
-    if (player.exp >= 100) {
-        player.level++; player.exp = 0;
-        player.baseAtk += 5; player.baseDef += 3;
-        player.maxHp += 20; player.hp = player.maxHp;
-        log("等級提升！能力大幅增強！");
-    }
-
-    setTimeout(() => { document.getElementById("battle-screen").style.display="none"; inBattle=false; }, 1200);
-}
-
-function playerHeal() {
-    if (player.potions > 0) {
-        player.potions--;
-        player.hp = Math.min(player.maxHp, player.hp + 40);
-        log("喝下藥水，生命恢復 40 點。");
-        updateUI();
+function tryEscape() {
+    if (Math.random() < 0.5) {
+        inBattle = false;
+        document.getElementById("battle-screen").style.display = "none";
+    } else {
+        log("逃跑失敗！");
         setTimeout(enemyTurn, 600);
     }
 }
 
-// --- 輔助功能 ---
-function log(msg) { document.getElementById("battle-log").innerHTML = msg; }
+// --- 戰利品系統 ---
+function winBattle() {
+    player.exp += enemy.exp; player.gold += 25;
+    map[enemy.pos.y][enemy.pos.x] = 0;
+    
+    currentLoot = [];
+    // 裝備掉落機率 (0.1 加成後約 35%)
+    if (Math.random() < 0.35) {
+        const type = Math.random() > 0.5 ? "weapon" : "armor";
+        currentLoot.push({
+            name: type === "weapon" ? "精鋼劍" : "鎖子甲",
+            type: type, power: player.level + 5, sub: generateSubStat()
+        });
+    }
+    // 藥水掉落 (約 60%)
+    if (Math.random() < 0.6) currentLoot.push({ name: "治癒藥水", type: "item" });
 
-function updateUI() {
-    document.getElementById("p-hp-fill").style.width = (player.hp / player.maxHp * 100) + "%";
-    document.getElementById("e-hp-fill").style.width = (enemy ? (enemy.hp / enemy.maxHp * 100) : 0) + "%";
-    document.getElementById("p-hp-text").innerText = `${player.hp}/${player.maxHp}`;
-    document.getElementById("e-hp-text").innerText = enemy ? `${enemy.hp}/${enemy.maxHp}` : "";
-    document.getElementById("lvl").innerText = player.level;
-    document.getElementById("exp").innerText = player.exp;
-    document.getElementById("atk-val").innerText = player.baseAtk + player.weapon.power;
-    document.getElementById("def-val").innerText = player.baseDef + player.armor.power;
-    document.getElementById("pot-count").innerText = player.potions;
-    document.getElementById("eq-weapon").innerText = `${player.weapon.name} (+${player.weapon.power})`;
-    document.getElementById("eq-armor").innerText = `${player.armor.name} (+${player.armor.power})`;
+    showLoot();
 }
 
-// --- 繪圖與移動 ---
+function showLoot() {
+    document.getElementById("battle-screen").style.display = "none";
+    const screen = document.getElementById("loot-screen");
+    const list = document.getElementById("loot-list");
+    list.innerHTML = "";
+    screen.style.display = "flex";
+
+    if (currentLoot.length === 0) {
+        list.innerHTML = "<p>這隻怪物很窮，什麼都沒掉...</p>";
+    }
+
+    currentLoot.forEach((item, index) => {
+        const div = document.createElement("div");
+        div.className = "loot-item";
+        let desc = item.type === "item" ? "恢復 40HP" : `+${item.power} ${item.sub ? item.sub.name : ""}`;
+        div.innerHTML = `<span>${item.name} (${desc})</span>`;
+        const btn = document.createElement("button");
+        btn.className = "btn";
+        btn.innerText = "拾取";
+        btn.onclick = () => pickLoot(index);
+        div.appendChild(btn);
+        list.appendChild(div);
+    });
+}
+
+function pickLoot(index) {
+    const item = currentLoot[index];
+    if (item.type === "weapon") player.weapon = item;
+    else if (item.type === "armor") player.armor = item;
+    else if (item.type === "item") player.potions++;
+    
+    currentLoot.splice(index, 1);
+    showLoot();
+    updateUI();
+}
+
+function closeLoot() {
+    document.getElementById("loot-screen").style.display = "none";
+    inBattle = false;
+    if (player.exp >= 100) {
+        player.level++; player.exp = 0;
+        player.baseAtk += 5; player.maxHp += 20; player.hp = player.maxHp;
+        alert("等級提升！生命值補滿！");
+    }
+    updateUI();
+}
+
+// --- 商店系統 ---
+function openShop() {
+    document.getElementById("shop-screen").style.display = "flex";
+    document.getElementById("gold-val").innerText = player.gold;
+    const rack = document.getElementById("weapon-rack");
+    rack.innerHTML = "";
+    shopGoods = [];
+    for (let i = 0; i < 2; i++) {
+        const item = { name: "商店裝備", type: Math.random()>0.5?"weapon":"armor", power: player.level+8, sub: generateSubStat(), price: 100+(player.level*20) };
+        shopGoods.push(item);
+        const btn = document.createElement("button");
+        btn.className = "btn";
+        btn.innerHTML = `${item.name}<br>${item.price}G`;
+        btn.onclick = () => {
+            if (player.gold >= item.price) {
+                player.gold -= item.price;
+                if (item.type === "weapon") player.weapon = item; else player.armor = item;
+                alert("購買成功！");
+                openShop(); updateUI();
+            }
+        };
+        rack.appendChild(btn);
+    }
+}
+
+function buyPotion() { if (player.gold >= 80) { player.gold -= 80; player.potions++; updateUI(); document.getElementById("gold-val").innerText = player.gold; } }
+function sellPotion() { if (player.potions > 0) { player.potions--; player.gold += 50; updateUI(); document.getElementById("gold-val").innerText = player.gold; } }
+function closeShop() { document.getElementById("shop-screen").style.display = "none"; }
+function playerHeal() { if (player.potions > 0) { player.potions--; player.hp = Math.min(player.maxHp, player.hp+40); updateUI(); if(inBattle) setTimeout(enemyTurn, 600); } }
+
+// --- UI 與繪圖 ---
+function updateUI() {
+    document.getElementById("p-hp-fill").style.width = (player.hp / player.maxHp * 100) + "%";
+    document.getElementById("e-hp-fill").style.width = enemy ? (enemy.hp / enemy.maxHp * 100) + "%" : "0%";
+    document.getElementById("p-hp-text").innerText = `${player.hp}/${player.maxHp}`;
+    document.getElementById("lvl").innerText = player.level;
+    document.getElementById("exp").innerText = player.exp;
+    document.getElementById("gold-ui").innerText = player.gold;
+    document.getElementById("world-pos").innerText = `${currentWorldX},${currentWorldY}`;
+    document.getElementById("atk-val").innerText = player.baseAtk + player.weapon.power;
+    document.getElementById("def-val").innerText = player.baseDef + player.armor.power;
+    document.getElementById("eq-weapon").innerText = player.weapon.name + ` (+${player.weapon.power})`;
+    document.getElementById("eq-armor").innerText = player.armor.name + ` (+${player.armor.power})`;
+    let sub = "副屬性：";
+    if (player.weapon.sub) sub += `[武器:${player.weapon.sub.name}+${player.weapon.sub.value}${player.weapon.sub.unit}] `;
+    if (player.armor.sub) sub += `[防具:${player.armor.sub.name}+${player.armor.sub.value}${player.armor.sub.unit}]`;
+    document.getElementById("sub-stats").innerText = sub;
+}
+
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const offsetX = 300 - (player.tx * 40 + 20);
     const offsetY = 200 - (player.ty * 40 + 20);
-    ctx.save();
-    ctx.translate(offsetX, offsetY);
-
+    ctx.save(); ctx.translate(offsetX, offsetY);
     for (let y = 0; y < MAP_SIZE; y++) {
         for (let x = 0; x < MAP_SIZE; x++) {
             let t = map[y][x];
-            ctx.fillStyle = (t === 1) ? "#444" : (t === 0) ? "#222" : monsters[t].color;
+            if (t === "shop") ctx.fillStyle = "#f1c40f";
+            else if (t === 1) ctx.fillStyle = "#444";
+            else if (t === 0) ctx.fillStyle = "#222";
+            else ctx.fillStyle = monsters[t].color;
             ctx.fillRect(x*40, y*40, 38, 38);
         }
     }
@@ -236,23 +354,30 @@ function draw() {
 }
 
 window.addEventListener("keydown", e => {
-    if (inBattle) return;
-    let nx = player.tx, ny = player.ty;
-    if (e.key === "ArrowUp") ny--;
-    if (e.key === "ArrowDown") ny++;
-    if (e.key === "ArrowLeft") nx--;
-    if (e.key === "ArrowRight") nx++;
+    if (inBattle) {
+        if (e.key === "1") playerAttack();
+        else if (e.key === "2") playerHeal();
+        else if (e.key === "3") tryEscape();
+        return;
+    }
+    if (document.getElementById("shop-screen").style.display === "flex" || 
+        document.getElementById("loot-screen").style.display === "flex") return;
 
-    if (nx < 0 || nx >= MAP_SIZE || ny < 0 || ny >= MAP_SIZE) {
-        generateMap(); player.tx = (nx<0)?MAP_SIZE-1:(nx>=MAP_SIZE)?0:nx; player.ty = (ny<0)?MAP_SIZE-1:(ny>=MAP_SIZE)?0:ny;
-    } else if (map[ny][nx] !== 1) {
+    let nx = player.tx, ny = player.ty;
+    if (e.key === "ArrowUp") ny--; else if (e.key === "ArrowDown") ny++;
+    else if (e.key === "ArrowLeft") nx--; else if (e.key === "ArrowRight") nx++;
+
+    if (nx < 0) switchRegion(-1, 0); else if (nx >= MAP_SIZE) switchRegion(1, 0);
+    else if (ny < 0) switchRegion(0, -1); else if (ny >= MAP_SIZE) switchRegion(0, 1);
+    else if (map[ny][nx] !== 1) {
         player.tx = nx; player.ty = ny;
-        if (typeof map[ny][nx] === "string") startBattle(nx, ny, map[ny][nx]);
+        if (map[ny][nx] === "shop") openShop();
+        else if (typeof map[ny][nx] === "string") startBattle(nx, ny, map[ny][nx]);
     }
     updateUI();
 });
 
-generateMap();
+map = loadRegion(0, 0);
 updateUI();
 draw();
 </script>
