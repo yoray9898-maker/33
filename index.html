@@ -1,1 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>我的網頁 RPG 冒險</title>
+    <style>
+        body { background: #222; color: white; display: flex; flex-direction: column; align-items: center; font-family: Arial, sans-serif; }
+        canvas { border: 4px solid #fff; background: #444; }
+        #ui { width: 600px; margin-top: 10px; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 5px; }
+        .stats { color: #0f0; }
+    </style>
+</head>
+<body>
+    <h1>簡單網頁 RPG</h1>
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+    <div id="ui">
+        <div class="stats">HP: <span id="hp">100</span> | 等級: <span id="lvl">1</span></div>
+        <div id="dialogue">提示：使用方向鍵移動，靠近黃色方塊與 NPC 對話。</div>
+    </div>
 
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+// 遊戲狀態
+const player = { x: 50, y: 50, size: 30, speed: 5, hp: 100, level: 1 };
+const npc = { x: 400, y: 200, size: 30, message: "勇者，去森林深處打敗魔王吧！" };
+const walls = [ {x: 200, y: 0, w: 20, h: 250}, {x: 400, y: 300, w: 200, h: 20} ];
+
+const keys = {};
+window.addEventListener("keydown", e => keys[e.key] = true);
+window.addEventListener("keyup", e => keys[e.key] = false);
+
+function checkCollision(ax, ay, asize, bx, by, bw, bh) {
+    return ax < bx + bw && ax + asize > bx && ay < by + bh && ay + asize > by;
+}
+
+function update() {
+    let nextX = player.x;
+    let nextY = player.y;
+
+    if (keys["ArrowUp"]) nextY -= player.speed;
+    if (keys["ArrowDown"]) nextY += player.speed;
+    if (keys["ArrowLeft"]) nextX -= player.speed;
+    if (keys["ArrowRight"]) nextX += player.speed;
+
+    // 牆壁碰撞檢測
+    let canMove = true;
+    for (let wall of walls) {
+        if (checkCollision(nextX, nextY, player.size, wall.x, wall.y, wall.w, wall.h)) {
+            canMove = false;
+        }
+    }
+
+    if (canMove) {
+        player.x = Math.max(0, Math.min(canvas.width - player.size, nextX));
+        player.y = Math.max(0, Math.min(canvas.height - player.size, nextY));
+    }
+
+    // NPC 對話觸發
+    if (checkCollision(player.x, player.y, player.size, npc.x, npc.y, npc.size, npc.size)) {
+        document.getElementById("dialogue").innerText = "NPC: " + npc.message;
+    }
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 畫牆壁
+    ctx.fillStyle = "#888";
+    walls.forEach(w => ctx.fillRect(w.x, w.y, w.w, w.h));
+
+    // 畫 NPC
+    ctx.fillStyle = "yellow";
+    ctx.fillRect(npc.x, npc.y, npc.size, npc.size);
+
+    // 畫玩家
+    ctx.fillStyle = "#00ffcc";
+    ctx.fillRect(player.x, player.y, player.size, player.size);
+
+    requestAnimationFrame(() => {
+        update();
+        draw();
+    });
+}
+
+draw();
+</script>
+</body>
+</html>
