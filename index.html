@@ -2,89 +2,192 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>我的網頁 RPG 冒險</title>
+    <title>RPG：荒野冒險</title>
     <style>
-        body { background: #222; color: white; display: flex; flex-direction: column; align-items: center; font-family: Arial, sans-serif; }
-        canvas { border: 4px solid #fff; background: #444; }
-        #ui { width: 600px; margin-top: 10px; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 5px; }
-        .stats { color: #0f0; }
+        body { background: #333; color: white; display: flex; flex-direction: column; align-items: center; font-family: "Microsoft JhengHei", sans-serif; }
+        #game-container { position: relative; width: 600px; height: 400px; }
+        canvas { border: 4px solid #fff; background: #222; display: block; }
+        #ui { width: 600px; background: rgba(0,0,0,0.8); padding: 15px; margin-top: 10px; border-radius: 5px; border: 1px solid #555; }
+        /* 戰鬥畫面覆蓋層 */
+        #battle-screen { 
+            display: none; position: absolute; top: 0; left: 0; width: 600px; height: 400px; 
+            background: #000; flex-direction: column; justify-content: space-around; align-items: center;
+        }
+        .battle-unit { text-align: center; font-size: 24px; }
+        .hp-bar { width: 200px; height: 15px; background: red; border: 2px solid #fff; margin-top: 5px; }
+        .hp-fill { height: 100%; background: #0f0; transition: width 0.3s; }
+        .btn { padding: 10px 20px; background: #444; color: white; border: 2px solid #fff; cursor: pointer; margin: 5px; }
+        .btn:hover { background: #666; }
     </style>
 </head>
 <body>
-    <h1>簡單網頁 RPG</h1>
-    <canvas id="gameCanvas" width="600" height="400"></canvas>
+    <h1>探索與戰鬥系統</h1>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="600" height="400"></canvas>
+        
+        <div id="battle-screen">
+            <h2 style="color: #ff4444;">！遭遇敵人！</h2>
+            <div style="display: flex; width: 100%; justify-content: space-around;">
+                <div class="battle-unit">
+                    <div>玩家</div>
+                    <div class="hp-bar"><div id="p-hp-fill" class="hp-fill"></div></div>
+                </div>
+                <div class="battle-unit">
+                    <div id="enemy-name">史萊姆</div>
+                    <div class="hp-bar"><div id="e-hp-fill" class="hp-fill"></div></div>
+                </div>
+            </div>
+            <div id="battle-log" style="height: 50px; font-size: 18px;">準備戰鬥...</div>
+            <div>
+                <button class="btn" onclick="playerAttack()">物理攻擊</button>
+                <button class="btn" onclick="playerHeal()">回覆生命</button>
+            </div>
+        </div>
+    </div>
+
     <div id="ui">
-        <div class="stats">HP: <span id="hp">100</span> | 等級: <span id="lvl">1</span></div>
-        <div id="dialogue">提示：使用方向鍵移動，靠近黃色方塊與 NPC 對話。</div>
+        <div style="color: #0fccff;">等級: <span id="lvl">1</span> | 生命: <span id="hp-text">100/100</span></div>
+        <div id="dialogue">移動：方向鍵 | 碰到紅色區塊進入戰鬥</div>
     </div>
 
 <script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// 遊戲狀態
-const player = { x: 50, y: 50, size: 30, speed: 5, hp: 100, level: 1 };
-const npc = { x: 400, y: 200, size: 30, message: "勇者，去森林深處打敗魔王吧！" };
-const walls = [ {x: 200, y: 0, w: 20, h: 250}, {x: 400, y: 300, w: 200, h: 20} ];
+// 1. 地圖系統 (0:平地, 1:牆壁, 2:傳送/出口, 3:草叢/戰鬥點)
+const TILE_SIZE = 40;
+const map = [
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+    [1,0,0,3,3,1,0,3,3,0,1,1,1,0,1],
+    [1,0,0,3,3,0,0,3,3,0,0,0,1,0,1],
+    [1,1,1,0,1,1,1,1,0,1,1,0,1,0,1],
+    [1,0,0,0,0,0,0,0,0,1,0,0,0,0,1],
+    [1,0,1,1,1,0,1,1,0,1,0,1,1,1,1],
+    [1,0,0,0,1,0,1,0,0,0,0,0,0,2,1],
+    [1,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+];
 
-const keys = {};
-window.addEventListener("keydown", e => keys[e.key] = true);
-window.addEventListener("keyup", e => keys[e.key] = false);
+// 2. 玩家與戰鬥數值
+const player = { tx: 1, ty: 1, hp: 100, maxHp: 100, level: 1, atk: 15 };
+let enemy = { hp: 0, maxHp: 0, atk: 0 };
+let inBattle = false;
 
-function checkCollision(ax, ay, asize, bx, by, bw, bh) {
-    return ax < bx + bw && ax + asize > bx && ay < by + bh && ay + asize > by;
-}
-
-function update() {
-    let nextX = player.x;
-    let nextY = player.y;
-
-    if (keys["ArrowUp"]) nextY -= player.speed;
-    if (keys["ArrowDown"]) nextY += player.speed;
-    if (keys["ArrowLeft"]) nextX -= player.speed;
-    if (keys["ArrowRight"]) nextX += player.speed;
-
-    // 牆壁碰撞檢測
-    let canMove = true;
-    for (let wall of walls) {
-        if (checkCollision(nextX, nextY, player.size, wall.x, wall.y, wall.w, wall.h)) {
-            canMove = false;
+function drawMap() {
+    for(let y=0; y<map.length; y++) {
+        for(let x=0; x<map[y].length; x++) {
+            let tile = map[y][x];
+            if(tile === 1) ctx.fillStyle = "#555"; // 牆壁
+            else if(tile === 0) ctx.fillStyle = "#333"; // 平地
+            else if(tile === 2) ctx.fillStyle = "#f0f"; // 出口
+            else if(tile === 3) ctx.fillStyle = "#2d4a22"; // 草叢
+            ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            ctx.strokeStyle = "#444";
+            ctx.strokeRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
         }
     }
+}
 
-    if (canMove) {
-        player.x = Math.max(0, Math.min(canvas.width - player.size, nextX));
-        player.y = Math.max(0, Math.min(canvas.height - player.size, nextY));
+// 3. 移動邏輯
+window.addEventListener("keydown", e => {
+    if (inBattle) return;
+    let nextX = player.tx;
+    let nextY = player.ty;
+
+    if (e.key === "ArrowUp") nextY--;
+    if (e.key === "ArrowDown") nextY++;
+    if (e.key === "ArrowLeft") nextX--;
+    if (e.key === "ArrowRight") nextX++;
+
+    if (map[nextY][nextX] !== 1) {
+        player.tx = nextX;
+        player.ty = nextY;
+        checkEvent(map[nextY][nextX]);
     }
+});
 
-    // NPC 對話觸發
-    if (checkCollision(player.x, player.y, player.size, npc.x, npc.y, npc.size, npc.size)) {
-        document.getElementById("dialogue").innerText = "NPC: " + npc.message;
+function checkEvent(tileType) {
+    if (tileType === 3 && Math.random() < 0.3) {
+        startBattle();
     }
 }
 
-function draw() {
+// 4. 戰鬥系統邏輯
+function startBattle() {
+    inBattle = true;
+    enemy.maxHp = 40 + (player.level * 10);
+    enemy.hp = enemy.maxHp;
+    enemy.atk = 5 + (player.level * 2);
+    
+    document.getElementById("battle-screen").style.display = "flex";
+    updateBattleUI();
+    document.getElementById("battle-log").innerText = "你遇到了怪物！";
+}
+
+function updateBattleUI() {
+    document.getElementById("p-hp-fill").style.width = (player.hp / player.maxHp * 100) + "%";
+    document.getElementById("e-hp-fill").style.width = (enemy.hp / enemy.maxHp * 100) + "%";
+    document.getElementById("hp-text").innerText = `${player.hp}/${player.maxHp}`;
+}
+
+function playerAttack() {
+    let dmg = player.atk + Math.floor(Math.random() * 5);
+    enemy.hp -= dmg;
+    document.getElementById("battle-log").innerText = `你造成了 ${dmg} 點傷害！`;
+    if (enemy.hp <= 0) {
+        winBattle();
+    } else {
+        setTimeout(enemyAttack, 600);
+    }
+    updateBattleUI();
+}
+
+function playerHeal() {
+    let heal = 20;
+    player.hp = Math.min(player.maxHp, player.hp + heal);
+    document.getElementById("battle-log").innerText = `你恢復了 ${heal} 點生命。`;
+    setTimeout(enemyAttack, 600);
+    updateBattleUI();
+}
+
+function enemyAttack() {
+    let dmg = enemy.atk + Math.floor(Math.random() * 3);
+    player.hp -= dmg;
+    document.getElementById("battle-log").innerText = `怪物反擊，你受到 ${dmg} 點傷害。`;
+    updateBattleUI();
+    if (player.hp <= 0) {
+        alert("你被打敗了... 重新開始！");
+        location.reload();
+    }
+}
+
+function winBattle() {
+    document.getElementById("battle-log").innerText = "戰鬥勝利！獲得經驗值。";
+    player.level++;
+    player.atk += 3;
+    player.maxHp += 10;
+    player.hp = player.maxHp;
+    document.getElementById("lvl").innerText = player.level;
+    setTimeout(() => {
+        document.getElementById("battle-screen").style.display = "none";
+        inBattle = false;
+    }, 1000);
+}
+
+// 5. 遊戲主迴圈
+function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // 畫牆壁
-    ctx.fillStyle = "#888";
-    walls.forEach(w => ctx.fillRect(w.x, w.y, w.w, w.h));
-
-    // 畫 NPC
-    ctx.fillStyle = "yellow";
-    ctx.fillRect(npc.x, npc.y, npc.size, npc.size);
-
+    drawMap();
+    
     // 畫玩家
     ctx.fillStyle = "#00ffcc";
-    ctx.fillRect(player.x, player.y, player.size, player.size);
+    ctx.fillRect(player.tx * TILE_SIZE + 5, player.ty * TILE_SIZE + 5, TILE_SIZE - 10, TILE_SIZE - 10);
 
-    requestAnimationFrame(() => {
-        update();
-        draw();
-    });
+    requestAnimationFrame(gameLoop);
 }
 
-draw();
+gameLoop();
 </script>
 </body>
 </html>
