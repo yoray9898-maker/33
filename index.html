@@ -278,16 +278,19 @@ function refreshRandomShop() {
     if (player.gold >= 50) {
         player.gold -= 50;
         const type = Math.random() > 0.5 ? "weapon" : "armor";
+        // 這裡讓價格隨機跳動： 200 ~ 500 之間
+        const dynamicPrice = Math.floor(Math.random() * 300) + 200; 
+        
         randomShopItem = {
             name: type === "weapon" ? "黑金利刃" : "鋼鐵護甲",
             type: type,
             power: player.level * 6 + 10,
-            price: 350,
+            price: dynamicPrice, // 使用隨機價格
             crit: type === "weapon" ? 15 : 0,
             dodge: type === "weapon" ? 0 : 10
         };
         document.getElementById("random-item-info").innerHTML = 
-            `${randomShopItem.name} (+${randomShopItem.power}) <button class="btn" onclick="buyRandom()">350G 購買</button>`;
+            `${randomShopItem.name} (+${randomShopItem.power}) <br> <button class="btn" onclick="buyRandom()">${randomShopItem.price}G 購買</button>`;
         updateUI();
     }
 }
