@@ -2,17 +2,15 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>永恆荒野 RPG - 混沌秩序完全版</title>
+    <title>永恆荒野 RPG - 元素遠征完全版</title>
     <style>
         body { background: #050505; color: white; display: flex; flex-direction: column; align-items: center; font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; margin: 0; overflow: hidden; }
-        #game-container { position: relative; width: 900px; height: 600px; margin-top: 20px; border: 5px solid #2c3e50; background: #000; box-shadow: 0 0 50px rgba(0, 0, 0, 0.8); }
+        #game-container { position: relative; width: 900px; height: 600px; margin-top: 20px; border: 5px solid #34495e; background: #000; box-shadow: 0 0 50px rgba(0, 0, 0, 0.8); }
         canvas { display: block; }
         
-        /* 全螢幕遮蓋層 */
-        .overlay { display: none; position: absolute; top: 0; left: 0; width: 900px; height: 600px; background: rgba(0,0,0,0.92); flex-direction: column; align-items: center; z-index: 100; padding-top: 40px; }
+        .overlay { display: none; position: absolute; top: 0; left: 0; width: 900px; height: 600px; background: rgba(0,0,0,0.95); flex-direction: column; align-items: center; z-index: 100; padding-top: 40px; }
         
-        /* 戰鬥介面精緻化 */
-        #battle-screen { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 860px; height: 530px; background: #0a0a0a; border: 4px solid #bdc3c7; border-radius: 20px; flex-direction: column; align-items: center; z-index: 110; box-shadow: 0 0 100px rgba(255,255,255,0.1); }
+        #battle-screen { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 860px; height: 530px; background: #0a0a0a; border: 4px solid #bdc3c7; border-radius: 20px; flex-direction: column; align-items: center; z-index: 110; }
         
         .bar-outer { width: 340px; margin: 8px 0; }
         .hp-bar-bg { width: 100%; height: 18px; background: #200; border: 2px solid #444; border-radius: 9px; overflow: hidden; position: relative; }
@@ -20,23 +18,16 @@
         .mp-bar-bg { width: 100%; height: 18px; background: #001; border: 2px solid #444; border-radius: 9px; overflow: hidden; position: relative; margin-top: 6px; }
         .mp-bar-fill { height: 100%; background: linear-gradient(90deg, #3498db, #2980b9); width: 100%; transition: width 0.4s ease-out; }
         
-        .status-text { position: absolute; width: 100%; text-align: center; font-size: 11px; line-height: 14px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000; }
+        .status-text { position: absolute; width: 100%; text-align: center; font-size: 11px; line-height: 14px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000; z-index: 5; }
         
-        .btn { padding: 12px 24px; background: #34495e; color: white; border: 1px solid #7f8c8d; cursor: pointer; margin: 5px; border-radius: 8px; font-weight: bold; font-size: 14px; transition: all 0.2s; }
-        .btn:hover { background: #5d6d7e; transform: translateY(-2px); border-color: #fff; }
-        .btn:active { transform: translateY(0); }
-        
-        /* 元素專屬顏色 */
-        .btn-fire { background: #e67e22; border-color: #d35400; }
-        .btn-ice { background: #3498db; border-color: #2980b9; }
-        .btn-light { background: #f1c40f; color: #2c3e50; border-color: #f39c12; }
-        .btn-dark { background: #8e44ad; border-color: #9b59b6; }
+        .btn { padding: 12px 24px; background: #34495e; color: white; border: 1px solid #7f8c8d; cursor: pointer; margin: 5px; border-radius: 8px; font-weight: bold; font-size: 14px; }
+        .btn:hover { background: #5d6d7e; border-color: #fff; }
         
         #battle-log { background: rgba(255,255,255,0.05); width: 85%; height: 80px; margin: 15px; padding: 12px; font-size: 15px; color: #f1c40f; text-align: center; border: 1px solid #333; overflow-y: auto; border-radius: 5px; }
         
         #ui-panel { width: 870px; background: #1a1a1a; padding: 15px; margin-top: 15px; border-radius: 12px; display: grid; grid-template-columns: 1fr 1fr 1.2fr; border: 2px solid #2c3e50; gap: 10px; }
         
-        #coord-info { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.8); padding: 10px 20px; border: 2px solid #ecf0f1; border-radius: 30px; font-weight: bold; color: #ecf0f1; letter-spacing: 1px; }
+        #coord-info { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.8); padding: 10px 20px; border: 2px solid #ecf0f1; border-radius: 30px; font-weight: bold; color: #ecf0f1; z-index: 50; }
         
         .tag { font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: bold; margin-left: 5px; text-transform: uppercase; }
         .tag-fire { background: #e67e22; color: #fff; }
@@ -50,23 +41,23 @@
 
 <div id="game-container">
     <div id="start-screen" class="overlay" style="display: flex;">
-        <h1 style="font-size: 40px; color: #ecf0f1; text-shadow: 0 0 20px rgba(255,255,255,0.3);">混沌冒險：元素覺醒</h1>
-        <p style="color: #bdc3c7;">光與暗屬性的敵人生命力異常強悍 (+50% HP)</p>
+        <h1 style="font-size: 42px; color: #ecf0f1;">混沌冒險：屬性覺醒</h1>
+        <p style="color: #bdc3c7;">[T] 鍵可使用傳送石回到原點 | 戰鬥可用數字鍵 [1-6]</p>
         <div style="display: flex; gap: 30px; margin-top: 30px;">
-            <div style="background: #222; padding: 20px; border: 2px solid #e74c3c; border-radius: 15px; text-align: center; width: 180px;">
-                <h2 style="color:#e74c3c;">戰士</h2>
-                <p style="font-size: 13px;">高HP、低MP<br>初始光屬性</p>
-                <button class="btn" onclick="selectJob('warrior')">踏上征途</button>
+            <div style="background: #111; padding: 20px; border: 2px solid #f1c40f; border-radius: 15px; text-align: center;">
+                <h2 style="color:#f1c40f;">戰士</h2>
+                <p style="font-size: 13px;">初始：聖光長劍 + 鐵甲<br>(光屬性套裝)</p>
+                <button class="btn" onclick="selectJob('warrior')">選擇戰士</button>
             </div>
-            <div style="background: #222; padding: 20px; border: 2px solid #9b59b6; border-radius: 15px; text-align: center; width: 180px;">
-                <h2 style="color:#9b59b6;">法師</h2>
-                <p style="font-size: 13px;">高MP、低HP<br>初始暗屬性</p>
-                <button class="btn" onclick="selectJob('mage')">追求奧秘</button>
+            <div style="background: #111; padding: 20px; border: 2px solid #8e44ad; border-radius: 15px; text-align: center;">
+                <h2 style="color:#8e44ad;">法師</h2>
+                <p style="font-size: 13px;">初始：暗影法杖 + 長袍<br>(暗屬性套裝)</p>
+                <button class="btn" onclick="selectJob('mage')">選擇法師</button>
             </div>
-            <div style="background: #222; padding: 20px; border: 2px solid #f1c40f; border-radius: 15px; text-align: center; width: 180px;">
-                <h2 style="color:#f1c40f;">盜賊</h2>
-                <p style="font-size: 13px;">高攻擊、中MP<br>初始雷屬性</p>
-                <button class="btn" onclick="selectJob('rogue')">影中穿梭</button>
+            <div style="background: #111; padding: 20px; border: 2px solid #3498db; border-radius: 15px; text-align: center;">
+                <h2 style="color:#3498db;">盜賊</h2>
+                <p style="font-size: 13px;">初始：雷鳴短刀 + 輕甲<br>(水/雷屬性套裝)</p>
+                <button class="btn" onclick="selectJob('rogue')">選擇盜賊</button>
             </div>
         </div>
     </div>
@@ -76,76 +67,71 @@
 
     <div id="battle-screen">
         <div id="enemy-box" style="margin-top: 30px; text-align: center; width: 100%;">
-            <div id="enemy-name" style="font-size: 28px; font-weight: bold; margin-bottom: 5px;">敵人名稱</div>
+            <div id="enemy-name" style="font-size: 28px; font-weight: bold;">敵人名稱</div>
             <div id="enemy-element-tag"></div>
             <div class="bar-outer" style="margin: 15px auto;">
                 <div class="hp-bar-bg"><div id="e-hp-fill" class="hp-bar-fill"></div><div id="e-hp-txt" class="status-text"></div></div>
             </div>
         </div>
-
-        <div id="battle-log">等待你的第一個動作...</div>
-
-        <div id="player-status-box" style="width: 100%; display: flex; justify-content: space-around; align-items: flex-end;">
+        <div id="battle-log">戰鬥即將開始...</div>
+        <div style="width: 100%; display: flex; justify-content: space-around; align-items: flex-end;">
             <div class="bar-outer">
-                <div style="font-size: 12px; margin-bottom: 2px;">勇者體力</div>
+                <div style="font-size: 12px; color:#aaa;">[1] 物理攻擊</div>
                 <div class="hp-bar-bg"><div id="p-hp-fill" class="hp-bar-fill"></div><div id="p-hp-txt" class="status-text"></div></div>
-                <div style="font-size: 12px; margin-top: 8px;">魔力儲備</div>
+                <div style="font-size: 12px; margin-top: 8px; color:#aaa;">[2-5] 元素魔法 | [6] 藥水</div>
                 <div class="mp-bar-bg"><div id="p-mp-fill" class="mp-bar-fill"></div><div id="p-mp-txt" class="status-text"></div></div>
             </div>
-            
-            <div class="action-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 10px;">
-                <button class="btn" onclick="handleAction('attack')">⚔️ 武器攻擊</button>
-                <button class="btn btn-fire" onclick="handleAction('fire')">🔥 煉獄火</button>
-                <button class="btn btn-ice" onclick="handleAction('ice')">❄️ 寒冰凍</button>
-                <button class="btn btn-light" onclick="handleAction('light')">✨ 聖光裁</button>
-                <button class="btn btn-dark" onclick="handleAction('dark')">💀 幽冥爆</button>
-                <button class="btn" onclick="handleAction('heal')">🧪 藥水瓶</button>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 10px;">
+                <button class="btn" onclick="handleAction('attack')">1. ⚔️ 攻擊</button>
+                <button class="btn" style="background:#e67e22" onclick="handleAction('fire')">2. 🔥 火</button>
+                <button class="btn" style="background:#3498db" onclick="handleAction('ice')">3. ❄️ 冰</button>
+                <button class="btn" style="background:#f1c40f; color:#000" onclick="handleAction('light')">4. ✨ 光</button>
+                <button class="btn" style="background:#8e44ad" onclick="handleAction('dark')">5. 💀 暗</button>
+                <button class="btn" onclick="handleAction('heal')">6. 🧪 藥水</button>
             </div>
         </div>
-        <button class="btn" style="margin-top: 15px; background: #c0392b;" onclick="handleAction('escape')">嘗試逃跑</button>
+        <button class="btn" style="background:#c0392b; margin-top:10px" onclick="handleAction('escape')">嘗試逃跑</button>
     </div>
 
     <div id="shop-screen" class="overlay">
-        <h1 style="color: #f1c40f; text-shadow: 0 0 15px rgba(241, 196, 15, 0.4);">神秘商隊</h1>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; width: 85%;">
-            <div style="background: #1a1a1a; border: 2px solid #34495e; padding: 20px; border-radius: 15px;">
-                <h3 style="border-bottom: 1px solid #333; padding-bottom: 10px;">永久強化</h3>
-                <p>攻擊精華 (150G) <button class="btn" onclick="shopBuy('atk')">購入</button></p>
-                <p>生命核心 (150G) <button class="btn" onclick="shopBuy('hp')">購入</button></p>
-                <p>戰鬥藥水 (80G) <button class="btn" onclick="shopBuy('pot')">購入</button></p>
+        <h1 style="color: #f1c40f;">神秘商店</h1>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 85%;">
+            <div style="background: #1a1a1a; padding: 20px; border: 1px solid #333; border-radius: 10px;">
+                <h3>物資與強化</h3>
+                <p>攻擊精華 (150G) <button class="btn" onclick="shopBuy('atk')">買</button></p>
+                <p>生命核心 (150G) <button class="btn" onclick="shopBuy('hp')">買</button></p>
+                <p>生命藥水 (80G) <button class="btn" onclick="shopBuy('pot')">買</button></p>
+                <p style="color: #54a0ff;">傳送晶石 (120G) <button class="btn" onclick="shopBuy('tp')">買</button></p>
             </div>
-            <div style="background: #1a1a1a; border: 2px solid #34495e; padding: 20px; border-radius: 15px;">
-                <h3 style="border-bottom: 1px solid #333; padding-bottom: 10px;">屬性軍械</h3>
-                <button class="btn" style="width: 100%;" onclick="shopRefresh()">重整貨架 (60G)</button>
-                <div id="shop-item-display" style="margin-top: 15px; font-size: 14px; min-height: 100px;"></div>
+            <div style="background: #1a1a1a; padding: 20px; border: 1px solid #333; border-radius: 10px;">
+                <h3>隨機武裝</h3>
+                <button class="btn" style="width:100%" onclick="shopRefresh()">重整貨架 (60G)</button>
+                <div id="shop-item-display" style="margin-top: 15px;"></div>
             </div>
         </div>
-        <button class="btn" style="margin-top: 30px; width: 200px;" onclick="toggleShop(false)">回到荒野</button>
+        <button class="btn" style="margin-top: 20px;" onclick="toggleShop(false)">離開商店</button>
     </div>
 </div>
 
 <div id="ui-panel">
     <div>
-        <span style="font-size: 22px; color: #3498db; font-weight: bold;">LV.<span id="ui-lvl">1</span></span>
-        <span id="ui-job" style="margin-left: 10px; color: #bdc3c7;">(職業)</span><br>
-        💰 金幣: <span id="ui-gold" style="color: #f1c40f;">0</span><br>
-        🧪 藥水: <span id="ui-pot">0</span>
+        <b style="color:#3498db; font-size:20px;">LV.<span id="ui-lvl">1</span></b> <span id="ui-job">職業</span><br>
+        💰 金幣: <span id="ui-gold">0</span> | 🧪 藥水: <span id="ui-pot">0</span><br>
+        🔮 傳送石: <span id="ui-tp-count" style="color:#54a0ff;">0</span>
     </div>
     <div style="border-left: 1px solid #333; padding-left: 15px;">
-        🗡️ 總攻擊力: <span id="ui-atk">0</span><br>
-        🛡️ 總防禦力: <span id="ui-def">0</span><br>
-        📈 經驗值: <span id="ui-exp">0</span> / 100
+        🗡️ ATK: <span id="ui-atk">0</span> | 🛡️ DEF: <span id="ui-def">0</span><br>
+        📈 EXP: <span id="ui-exp">0</span> / 100
     </div>
     <div style="border-left: 1px solid #333; padding-left: 15px; font-size: 13px;">
-        【當前裝備】<br>
-        武器: <span id="ui-weapon" style="color: #54a0ff;">無</span> <span id="ui-weapon-el"></span><br>
-        防具: <span id="ui-armor" style="color: #54a0ff;">無</span> <span id="ui-armor-el"></span>
+        武器: <span id="ui-weapon">無</span> <span id="ui-weapon-el"></span><br>
+        防具: <span id="ui-armor">無</span> <span id="ui-armor-el"></span>
     </div>
 </div>
 
 <script>
 /**
- * RPG 核心驅動引擎
+ * RPG 核心系統 - 傳送與專屬裝備版
  */
 
 const canvas = document.getElementById("mainCanvas");
@@ -160,126 +146,112 @@ let gameState = { inBattle: false, canInput: true, currentEnemy: null };
 const elements = {
     fire: { name: "火", color: "#e67e22" },
     ice: { name: "水", color: "#3498db" },
-    light: { name: "光", color: "#ecf0f1" },
-    dark: { name: "暗", color: "#2c3e50" },
+    light: { name: "光", color: "#f1c40f" },
+    dark: { name: "暗", color: "#8e44ad" },
     none: { name: "無", color: "#7f8c8d" }
 };
 
 const player = {
     tx: 7, ty: 7, hp: 100, maxHp: 100, mp: 60, maxMp: 60,
     level: 1, exp: 0, gold: 500, job: "無",
-    baseAtk: 25, baseDef: 12, potions: 5,
-    weapon: { name: "生鏽鐵劍", power: 8, element: "none" },
-    armor: { name: "旅行者皮衣", power: 6, element: "none" }
+    baseAtk: 25, baseDef: 12, potions: 3, tpStones: 2,
+    weapon: { name: "新手劍", power: 5, element: "none" },
+    armor: { name: "新手衣", power: 5, element: "none" }
 };
 
-/**
- * 核心計算：屬性克制邏輯 (完全展開)
- */
+// 元素克制邏輯 (完全展開)
 function getElementMultiplier(atk, def) {
     if (atk === "none" || def === "none") {
-        // 光暗優勢：對普通屬性有 1.2 倍壓制
         if ((atk === "light" || atk === "dark") && def !== "none") return 1.2;
         return 1.0;
     }
-    // 混沌循環：光暗互克 1.5 倍
     if ((atk === "light" && def === "dark") || (atk === "dark" && def === "light")) return 1.5;
-    // 自然循環：水克火 (2.0), 火打水不利 (0.5)
     if (atk === "fire" && def === "ice") return 0.5;
     if (atk === "ice" && def === "fire") return 2.0;
     return 1.0;
 }
 
-/**
- * 地圖生成器 (無迷霧完全版)
- */
+// 地圖與怪物生成
 function generateMap(wx, wy) {
     const id = `${wx},${wy}`;
     if (maps[id]) return;
-
-    // 1. 地形生成
     let grid = [];
     for (let y = 0; y < MAP_SIZE; y++) {
         grid[y] = [];
         for (let x = 0; x < MAP_SIZE; x++) {
-            // 邊界判定與村莊(中心點)
             if (x === 0 || y === 0 || x === MAP_SIZE - 1 || y === MAP_SIZE - 1) {
-                grid[y][x] = (Math.abs(x - 7) <= 1 || Math.abs(y - 7) <= 1) ? 0 : 1;
-            } else if (wx === 0 && wy === 0 && x === 7 && y === 7) {
-                grid[y][x] = "shop";
-            } else {
-                grid[y][x] = Math.random() < 0.12 ? 1 : 0; // 牆壁機率
-            }
+                grid[y][x] = (Math.abs(x-7)<=1 || Math.abs(y-7)<=1) ? 0 : 1;
+            } else if (wx===0 && wy===0 && x===7 && y===7) grid[y][x] = "shop";
+            else grid[y][x] = Math.random() < 0.12 ? 1 : 0;
         }
     }
     maps[id] = grid;
 
-    // 2. 怪物生成 (光暗血量 1.5 倍展開)
     let enemies = [];
     let dist = Math.abs(wx) + Math.abs(wy);
     if (dist > 0) {
-        let monsterCount = 3 + Math.floor(Math.random() * 2);
+        let count = 3 + Math.floor(Math.random()*2);
         const types = ["fire", "ice", "light", "dark", "none"];
-        
-        for (let i = 0; i < monsterCount; i++) {
-            let el = types[Math.floor(Math.random() * types.length)];
+        for(let i=0; i<count; i++) {
+            let el = types[Math.floor(Math.random()*types.length)];
             let baseHp = 60 + dist * 15;
-            
-            // 根據你的要求：光暗屬性血量乘以 1.5
-            if (el === "light" || el === "dark") {
-                baseHp = Math.floor(baseHp * 1.5);
-            }
-
+            if (el === "light" || el === "dark") baseHp = Math.floor(baseHp * 1.5); // 血量加成
             enemies.push({
-                tx: Math.floor(Math.random() * 13) + 1,
-                ty: Math.floor(Math.random() * 13) + 1,
-                name: (el === "light" || el === "dark") ? "混沌惡魔" : "荒野游兵",
-                hp: baseHp, maxHp: baseHp,
-                atk: 20 + dist * 2,
-                element: el,
-                alive: true
+                tx: Math.floor(Math.random()*13)+1, ty: Math.floor(Math.random()*13)+1,
+                name: (el==="light"||el==="dark")?"混沌之影":"荒野怪",
+                hp: baseHp, maxHp: baseHp, atk: 20 + dist * 2.2, element: el, alive: true
             });
         }
     }
     enemiesOnMap[id] = enemies;
 }
 
-/**
- * 戰鬥處理邏輯
- */
+// 傳送石邏輯
+function useTeleport() {
+    if (gameState.inBattle) return;
+    if (player.tpStones > 0) {
+        player.tpStones--;
+        worldX = 0; worldY = 0;
+        player.tx = 7; player.ty = 7;
+        generateMap(0, 0);
+        updateUI();
+        alert("使用了傳送晶石，瞬間回到了起點！");
+    } else {
+        alert("身上沒有傳送晶石了！");
+    }
+}
+
+// 戰鬥邏輯
 function handleAction(type) {
     if (!gameState.canInput || !gameState.inBattle) return;
     const enemy = gameState.currentEnemy;
     
-    // 消耗判定
     if (['fire', 'ice', 'light', 'dark'].includes(type)) {
         let cost = (type === 'light' || type === 'dark') ? 35 : 20;
-        if (player.mp < cost) { updateLog("魔力不足！無法施法！"); return; }
+        if (player.mp < cost) { updateLog("魔力不足！"); return; }
         player.mp -= cost;
-        
         gameState.canInput = false;
         let mult = getElementMultiplier(type, enemy.element);
-        let dmg = Math.floor((35 + player.level * 5) * mult);
+        let dmg = Math.floor((40 + player.level * 5) * mult);
         enemy.hp -= dmg;
-        updateLog(`你吟唱魔法，對敵人造成 ${dmg} 點 ${elements[type].name} 傷害！`);
+        updateLog(`施展魔法，對敵人造成 ${dmg} 點傷害！`);
     } 
     else if (type === 'attack') {
         gameState.canInput = false;
         let mult = getElementMultiplier(player.weapon.element, enemy.element);
-        let dmg = Math.floor(Math.max(5, (player.baseAtk + player.weapon.power - 8) * mult));
+        let dmg = Math.floor(Math.max(5, (player.baseAtk + player.weapon.power - 10) * mult));
         enemy.hp -= dmg;
-        updateLog(`你揮動 ${player.weapon.name}，造成 ${dmg} 點物理傷害！`);
+        updateLog(`物理攻擊，造成 ${dmg} 點傷害！`);
     }
     else if (type === 'heal') {
         if (player.potions > 0) {
             player.potions--; player.hp = Math.min(player.maxHp, player.hp + 60);
-            updateLog("你喝下了藥水，生命值大幅恢復！");
-            updateUI(); return; // 補血不跳過回合
+            updateLog("恢復了生命值！"); updateUI(); return;
         }
     }
     else if (type === 'escape') {
         if (Math.random() < 0.4) { endBattle(false); return; }
-        else { updateLog("逃跑失敗！被敵人纏住了！"); gameState.canInput = false; }
+        else { updateLog("逃跑失敗！"); gameState.canInput = false; }
     }
 
     refreshBattleBars();
@@ -289,66 +261,65 @@ function handleAction(type) {
 
 function enemyTurn() {
     const enemy = gameState.currentEnemy;
-    // 玩家防御屬性影響 (防具克制敵人)
     let mult = getElementMultiplier(enemy.element, player.armor.element);
     let dmg = Math.floor(Math.max(5, (enemy.atk - (player.baseDef + player.armor.power)) * (mult > 1 ? 1.3 : mult < 1 ? 0.7 : 1)));
-    
     player.hp -= dmg;
-    player.mp = Math.min(player.maxMp, player.mp + 12); // 受擊回魔
-    updateLog(`${enemy.name} 發動反擊，你受到了 ${dmg} 點傷害。`);
-    
-    updateUI();
-    refreshBattleBars();
-    
-    if (player.hp <= 0) { alert("你已戰死沙場..."); location.reload(); }
+    player.mp = Math.min(player.maxMp, player.mp + 12);
+    updateLog(`敵人攻擊，你受到 ${dmg} 點傷害。`);
+    updateUI(); refreshBattleBars();
+    if (player.hp <= 0) { alert("戰敗了..."); location.reload(); }
     else gameState.canInput = true;
 }
 
-/**
- * 商店與裝備隨機化
- */
+// 商店與裝備
+function shopBuy(type) {
+    let cost = (type==='tp'?120 : (type==='pot'?80 : 150));
+    if (player.gold < cost) return;
+    player.gold -= cost;
+    if(type==='atk') player.baseAtk += 10;
+    else if(type==='hp') { player.maxHp += 50; player.hp = player.maxHp; }
+    else if(type==='pot') player.potions++;
+    else if(type==='tp') player.tpStones++;
+    updateUI();
+}
+
 function shopRefresh() {
     if (player.gold < 60) return;
     player.gold -= 60;
-    const elKeys = Object.keys(elements).filter(k => k !== 'none');
+    const elKeys = ["fire", "ice", "light", "dark"];
     const randEl = elKeys[Math.floor(Math.random() * elKeys.length)];
     const isWep = Math.random() > 0.5;
-    const power = 15 + Math.floor(Math.random() * 25) + (player.level * 2);
-    
+    const pwr = 15 + Math.floor(Math.random()*25) + player.level*2;
     document.getElementById("shop-item-display").innerHTML = `
-        <div style="border: 1px solid #555; padding: 10px; background: #000;">
-            <b>【${isWep ? '神話武器' : '傳奇重甲'}】</b><br>
+        <div style="border:1px solid #555; padding:8px;">
+            <b>隨機${isWep?'武器':'防具'}</b><br>
             屬性: <span class="tag tag-${randEl}">${elements[randEl].name}</span><br>
-            數值: +${power}<br>
-            <button class="btn" style="width:100%;" onclick="executeBuy('${randEl}', ${power}, ${isWep})">成交 (300G)</button>
+            數值: +${pwr}<br>
+            <button class="btn" onclick="executeBuy('${randEl}', ${pwr}, ${isWep})">成交 (300G)</button>
         </div>
     `;
     updateUI();
 }
-
 function executeBuy(el, pwr, isW) {
     if (player.gold < 300) return;
     player.gold -= 300;
-    if (isW) player.weapon = { name: "附魔兵器", power: pwr, element: el };
-    else player.armor = { name: "魔化護甲", power: pwr, element: el };
-    document.getElementById("shop-item-display").innerHTML = "感謝惠顧！裝備已更新。";
+    if (isW) player.weapon = { name: "傳奇兵器", power: pwr, element: el };
+    else player.armor = { name: "傳奇重鎧", power: pwr, element: el };
     updateUI();
 }
 
-/**
- * 輔助 UI 函數
- */
+// UI 與 控制
 function updateUI() {
     document.getElementById("ui-lvl").innerText = player.level;
     document.getElementById("ui-job").innerText = `(${player.job})`;
     document.getElementById("ui-gold").innerText = player.gold;
     document.getElementById("ui-pot").innerText = player.potions;
+    document.getElementById("ui-tp-count").innerText = player.tpStones;
     document.getElementById("ui-atk").innerText = player.baseAtk + player.weapon.power;
     document.getElementById("ui-def").innerText = player.baseDef + player.armor.power;
     document.getElementById("ui-exp").innerText = player.exp;
     document.getElementById("coord-x").innerText = worldX;
     document.getElementById("coord-y").innerText = worldY;
-    
     document.getElementById("ui-weapon").innerText = player.weapon.name;
     document.getElementById("ui-weapon-el").className = `tag tag-${player.weapon.element}`;
     document.getElementById("ui-weapon-el").innerText = elements[player.weapon.element].name;
@@ -357,60 +328,70 @@ function updateUI() {
     document.getElementById("ui-armor-el").innerText = elements[player.armor.element].name;
 }
 
-function refreshBattleBars() {
-    const e = gameState.currentEnemy;
-    document.getElementById("e-hp-fill").style.width = (e.hp / e.maxHp * 100) + "%";
-    document.getElementById("e-hp-txt").innerText = `${Math.ceil(e.hp)} / ${e.maxHp}`;
-    document.getElementById("p-hp-fill").style.width = (player.hp / player.maxHp * 100) + "%";
-    document.getElementById("p-hp-txt").innerText = `${Math.ceil(player.hp)} / ${player.maxHp}`;
-    document.getElementById("p-mp-fill").style.width = (player.mp / player.maxMp * 100) + "%";
-    document.getElementById("p-mp-txt").innerText = `${player.mp} / ${player.maxMp}`;
-}
-
-function updateLog(m) { document.getElementById("battle-log").innerText = m; }
-function toggleShop(show) { document.getElementById("shop-screen").style.display = show ? "flex" : "none"; }
 function selectJob(j) {
-    player.job = (j==='warrior')?"戰士":(j==='mage')?"法師":"盜賊";
-    if(j==='warrior') { player.maxHp=200; player.hp=200; player.mp=40; player.maxMp=40; player.weapon.element='light'; }
-    if(j==='mage') { player.maxHp=90; player.hp=90; player.mp=160; player.maxMp=160; player.weapon.element='dark'; }
+    if(j==='warrior') {
+        player.job="戰士"; player.maxHp=220; player.hp=220; player.mp=40; player.maxMp=40;
+        player.weapon={name:"聖光長劍", power:12, element:"light"};
+        player.armor={name:"騎士鐵甲", power:10, element:"light"};
+    } else if(j==='mage') {
+        player.job="法師"; player.maxHp=100; player.hp=100; player.mp=180; player.maxMp=180;
+        player.weapon={name:"暗影法杖", power:8, element:"dark"};
+        player.armor={name:"祭司長袍", power:6, element:"dark"};
+    } else {
+        player.job="盜賊"; player.maxHp=150; player.hp=150; player.mp=80; player.maxMp=80;
+        player.weapon={name:"雷鳴短刀", power:15, element:"ice"};
+        player.armor={name:"皮質輕甲", power:8, element:"ice"};
+    }
     document.getElementById("start-screen").style.display = "none";
     updateUI();
 }
 
-function startBattle(en) {
-    gameState.inBattle = true; gameState.currentEnemy = en;
-    document.getElementById("battle-screen").style.display = "flex";
-    document.getElementById("enemy-name").innerText = en.name;
-    document.getElementById("enemy-name").style.color = elements[en.element].color;
-    document.getElementById("enemy-element-tag").innerHTML = `<span class="tag tag-${en.element}">${elements[en.element].name}屬性</span>`;
-    updateLog("戰鬥開始！準備應對強敵。");
-    refreshBattleBars();
-}
-
-function endBattle(win) {
-    if (win) {
-        player.exp += 75; player.gold += 180;
-        gameState.currentEnemy.alive = false;
-        if (player.exp >= 100) { 
-            player.level++; player.exp = 0; player.maxHp += 40; player.hp = player.maxHp; 
-            player.maxMp += 25; player.mp = player.maxMp; player.baseAtk += 8;
-            alert("等級提升！全數值成長。"); 
-        }
+// 監聽鍵盤 (包括數字鍵戰鬥與 T 鍵傳送)
+window.addEventListener("keydown", (e) => {
+    // 戰鬥中的數字鍵控制
+    if (gameState.inBattle && gameState.canInput) {
+        if (e.key === "1") handleAction('attack');
+        if (e.key === "2") handleAction('fire');
+        if (e.key === "3") handleAction('ice');
+        if (e.key === "4") handleAction('light');
+        if (e.key === "5") handleAction('dark');
+        if (e.key === "6") handleAction('heal');
+        return;
     }
-    gameState.inBattle = false;
-    document.getElementById("battle-screen").style.display = "none";
-    updateUI();
-}
+    
+    if (document.querySelector(".overlay[style*='flex']")) return;
 
-/**
- * 繪製循環
- */
+    // T 鍵傳送
+    if (e.key.toLowerCase() === "t") { useTeleport(); return; }
+
+    // 移動控制
+    let nx = player.tx, ny = player.ty;
+    if (e.key === "ArrowUp") ny--; else if (e.key === "ArrowDown") ny++;
+    else if (e.key === "ArrowLeft") nx--; else if (e.key === "ArrowRight") nx++;
+    else return;
+
+    const id = `${worldX},${worldY}`;
+    if (nx < 0 || nx >= MAP_SIZE || ny < 0 || ny >= MAP_SIZE) {
+        if (nx < 0) { worldX--; player.tx = MAP_SIZE-1; }
+        else if (nx >= MAP_SIZE) { worldX++; player.tx = 0; }
+        else if (ny < 0) { worldY--; player.ty = MAP_SIZE-1; }
+        else if (ny >= MAP_SIZE) { worldY++; player.ty = 0; }
+        generateMap(worldX, worldY);
+    } else if (maps[id][ny][nx] !== 1) {
+        player.tx = nx; player.ty = ny;
+        if (maps[id][ny][nx] === "shop") toggleShop(true);
+        let hit = (enemiesOnMap[id] || []).find(en => en.alive && en.tx === nx && en.ty === ny);
+        if (hit) startBattle(hit);
+    }
+    updateUI();
+});
+
+// 渲染與輔助
 function draw() {
     ctx.fillStyle = "#000"; ctx.fillRect(0,0,900,600);
     const ox = 450 - (player.tx * TILE_SIZE + 25);
     const oy = 300 - (player.ty * TILE_SIZE + 25);
     ctx.save(); ctx.translate(ox, oy);
-
     const id = `${worldX},${worldY}`;
     const grid = maps[id];
     for (let y=0; y<MAP_SIZE; y++) {
@@ -420,55 +401,42 @@ function draw() {
             ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE, 48, 48);
         }
     }
-
     if (enemiesOnMap[id]) {
         enemiesOnMap[id].forEach(en => {
             if (en.alive) {
                 ctx.fillStyle = elements[en.element].color;
-                ctx.fillRect(en.tx*TILE_SIZE+10, en.ty*TILE_SIZE+10, 30, 30);
-                if (en.element==='light' || en.element==='dark') {
-                    ctx.strokeStyle = "white"; ctx.strokeRect(en.tx*TILE_SIZE+7, en.ty*TILE_SIZE+7, 36, 36);
-                }
+                ctx.fillRect(en.tx*TILE_SIZE+12, en.ty*TILE_SIZE+12, 26, 26);
             }
         });
     }
-
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(player.tx*TILE_SIZE+15, player.ty*TILE_SIZE+15, 20, 20);
+    ctx.fillStyle = "#fff"; ctx.fillRect(player.tx*TILE_SIZE+15, player.ty*TILE_SIZE+15, 20, 20);
     ctx.restore();
     requestAnimationFrame(draw);
 }
 
-window.addEventListener("keydown", (e) => {
-    if (gameState.inBattle || document.querySelector(".overlay[style*='flex']")) return;
-    let nx = player.tx, ny = player.ty;
-    if (e.key === "ArrowUp") ny--; else if (e.key === "ArrowDown") ny++;
-    else if (e.key === "ArrowLeft") nx--; else if (e.key === "ArrowRight") nx++;
-    else return;
-
-    if (nx < 0 || nx >= MAP_SIZE || ny < 0 || ny >= MAP_SIZE) {
-        if (nx < 0) { worldX--; player.tx = MAP_SIZE-1; }
-        else if (nx >= MAP_SIZE) { worldX++; player.tx = 0; }
-        else if (ny < 0) { worldY--; player.ty = MAP_SIZE-1; }
-        else if (ny >= MAP_SIZE) { worldY++; player.ty = 0; }
-        generateMap(worldX, worldY);
-    } else if (maps[`${worldX},${worldY}`][ny][nx] !== 1) {
-        player.tx = nx; player.ty = ny;
-        if (maps[`${worldX},${worldY}`][ny][nx] === "shop") toggleShop(true);
-        let hit = (enemiesOnMap[`${worldX},${worldY}`] || []).find(en => en.alive && en.tx === nx && en.ty === ny);
-        if (hit) startBattle(hit);
-    }
-    updateUI();
-});
-
-function shopBuy(type) {
-    if (player.gold < (type==='pot'?80:150)) return;
-    player.gold -= (type==='pot'?80:150);
-    if(type==='atk') player.baseAtk += 10;
-    else if(type==='hp') { player.maxHp += 50; player.hp = player.maxHp; }
-    else player.potions++;
-    updateUI();
+function startBattle(en) {
+    gameState.inBattle = true; gameState.currentEnemy = en;
+    document.getElementById("battle-screen").style.display = "flex";
+    document.getElementById("enemy-name").innerText = en.name;
+    document.getElementById("enemy-name").style.color = elements[en.element].color;
+    document.getElementById("enemy-element-tag").innerHTML = `<span class="tag tag-${en.element}">${elements[en.element].name}</span>`;
+    refreshBattleBars();
 }
+function endBattle(win) {
+    if (win) { player.exp += 75; player.gold += 150; gameState.currentEnemy.alive = false; if(player.exp>=100){player.level++; player.exp=0; player.maxHp+=40; player.hp=player.maxHp; alert("升級了！");} }
+    gameState.inBattle = false; document.getElementById("battle-screen").style.display = "none"; updateUI();
+}
+function refreshBattleBars() {
+    const e = gameState.currentEnemy;
+    document.getElementById("e-hp-fill").style.width = (e.hp/e.maxHp*100)+"%";
+    document.getElementById("e-hp-txt").innerText = `${Math.ceil(e.hp)}/${e.maxHp}`;
+    document.getElementById("p-hp-fill").style.width = (player.hp/player.maxHp*100)+"%";
+    document.getElementById("p-hp-txt").innerText = `${Math.ceil(player.hp)}/${player.maxHp}`;
+    document.getElementById("p-mp-fill").style.width = (player.mp/player.maxMp*100)+"%";
+    document.getElementById("p-mp-txt").innerText = `${player.mp}/${player.maxMp}`;
+}
+function updateLog(m) { document.getElementById("battle-log").innerText = m; }
+function toggleShop(s) { document.getElementById("shop-screen").style.display = s?"flex":"none"; }
 
 generateMap(0,0); draw(); updateUI();
 </script>
