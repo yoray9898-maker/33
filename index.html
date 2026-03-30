@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>永恆荒野 RPG - 功能完全復原版</title>
+    <title>永恆荒野 RPG - 職業簡介版</title>
     <style>
         body { background: #050505; color: white; display: flex; flex-direction: column; align-items: center; font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; margin: 0; overflow: hidden; }
         #game-container { position: relative; width: 900px; height: 600px; margin-top: 20px; border: 5px solid #34495e; background: #000; box-shadow: 0 0 50px rgba(0, 0, 0, 0.8); }
@@ -18,6 +18,8 @@
         .status-text { position: absolute; width: 100%; text-align: center; font-size: 11px; line-height: 18px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000; z-index: 5; }
         .btn { padding: 10px 18px; background: #34495e; color: white; border: 1px solid #7f8c8d; cursor: pointer; margin: 3px; border-radius: 8px; font-weight: bold; font-size: 13px; min-width: 140px; }
         .btn:hover { background: #5d6d7e; border-color: #fff; }
+        .job-card { background: #1a1a1a; padding: 15px; border-radius: 10px; border: 1px solid #444; margin: 10px; width: 250px; text-align: center; }
+        .job-desc { font-size: 13px; color: #bdc3c7; margin-top: 8px; line-height: 1.5; height: 60px; }
         #battle-log { background: rgba(0,0,0,0.6); width: 85%; height: 110px; margin: 10px; padding: 12px; font-size: 14px; color: #f1c40f; text-align: left; border: 1px solid #444; overflow-y: auto; border-radius: 5px; line-height: 1.6; }
         #ui-panel { width: 870px; background: #1a1a1a; padding: 15px; margin-top: 10px; border-radius: 12px; display: grid; grid-template-columns: 1.2fr 1fr 1.2fr; border: 2px solid #2c3e50; gap: 10px; }
         .tag { font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: bold; margin-top: 5px; display: inline-block; }
@@ -27,12 +29,23 @@
 
 <div id="game-container">
     <div id="start-screen" class="overlay" style="display: flex;">
-        <h1 style="font-size: 36px; color: #e67e22;">永恆荒野：完整版回歸</h1>
-        <p style="color: #bdc3c7;">獵殺者、鐵壁守衛技能率 55% | 介面功能全數還原</p>
-        <div style="display: flex; gap: 15px; margin-top: 25px;">
-            <button class="btn" onclick="selectJob('warrior')">聖教戰士</button>
-            <button class="btn" onclick="selectJob('mage')">虛空法師</button>
-            <button class="btn" onclick="selectJob('rogue')">寒霜盜賊</button>
+        <h1 style="color: #f39c12;">選擇你的職業</h1>
+        <div style="display: flex; flex-wrap: wrap; justify-content: center;">
+            <div class="job-card">
+                <b style="color: #f1c40f; font-size: 20px;">戰士</b>
+                <div class="job-desc">擁有極高的初始生命與防禦力。擅長持久戰，技能附帶光屬性制裁。</div>
+                <button class="btn" onclick="selectJob('warrior')">選擇戰士</button>
+            </div>
+            <div class="job-card">
+                <b style="color: #8e44ad; font-size: 20px;">法師</b>
+                <div class="job-desc">體質脆弱，但擁有極高的魔力上限。法術輸出強大，擅長暗屬性爆發。</div>
+                <button class="btn" onclick="selectJob('mage')">選擇法師</button>
+            </div>
+            <div class="job-card">
+                <b style="color: #3498db; font-size: 20px;">盜賊</b>
+                <div class="job-desc">高攻擊成長的物理職業。戰鬥節奏輕快，擅長利用冰屬性削弱對手。</div>
+                <button class="btn" onclick="selectJob('rogue')">選擇盜賊</button>
+            </div>
         </div>
     </div>
 
@@ -184,7 +197,7 @@ function handleAction(type) {
 
         if (enemy.shield > 0) {
             if (dmg <= enemy.shield) { enemy.shield -= dmg; updateLog(`🛡️ 傷害被護盾完全吸收！`); }
-            else { let overflow = dmg - enemy.shield; updateLog(`🛡️ 護盾粉碎！${Math.ceil(overflow)} 傷害貫穿本體。`); enemy.shield = 0; enemy.hp -= overflow; }
+            else { let overflow = dmg - enemy.shield; updateLog(`🛡️ 護盾粉碎！造成 ${Math.ceil(overflow)} 貫穿傷害。`); enemy.shield = 0; enemy.hp -= overflow; }
         } else { enemy.hp -= dmg; }
     } else if (type === 'h_pot') {
         if (player.hpPotions > 0) { player.hpPotions--; player.hp = Math.min(player.maxHp, player.hp + 100); updateLog("🍷 喝下紅水恢復 100 HP"); updateUI(); }
@@ -209,25 +222,20 @@ function enemyTurn() {
         updateLog("😵 暈眩中無法動彈！");
         gameState.pStun = false;
     } else {
-        // 地圖守衛特技：護盾 (55% 機率)
         if (enemy.type === "guard" && enemy.shield <= 0 && Math.random() < skillChance) {
             enemy.shield = enemy.maxHp * 0.5;
-            updateLog(`💠 ${enemy.name}：【守護之盾】觸發！獲得 ${Math.ceil(enemy.shield)} 額外護盾！`);
+            updateLog(`💠 ${enemy.name}：【守護之盾】觸發！獲得 ${Math.ceil(enemy.shield)} 點額外護盾！`);
         }
         
-        // 攻擊判斷
         if (enemy.type === "hunter" && Math.random() < skillChance) {
-            // 獵殺者：影殺貫穿 (1.5倍傷害，無視50%防禦)
             let dmg = Math.floor(Math.max(10, (enemy.atk * 1.5 - (pDef * 0.5)) * getMult(enemy.element, player.armor.element)));
             player.hp -= dmg; player.mp = Math.max(0, player.mp - 15);
             updateLog(`🔴 ${enemy.name}：使用【影殺貫穿】！造成 ${dmg} 傷害並抽走魔力！`);
         } else if (enemy.type === "guard" && Math.random() < skillChance) {
-            // 守衛：大地重震
             let dmg = Math.floor(Math.max(10, (enemy.atk * 1.8 - pDef) * getMult(enemy.element, player.armor.element)));
             player.hp -= dmg; gameState.pStun = true;
             updateLog(`🪨 ${enemy.name}：【大地重震】！造成 ${dmg} 傷害並附加暈眩！`);
         } else {
-            // 普通攻擊
             let dmg = Math.floor(Math.max(5, (enemy.atk - pDef) * getMult(enemy.element, player.armor.element)));
             player.hp -= dmg;
             updateLog(`👾 ${enemy.name} 發動攻擊：造成 ${dmg} 傷害。`);
@@ -242,13 +250,11 @@ function enemyTurn() {
 function startBattle(en) {
     if (Math.random() < 0.3) { en.hp = Math.floor(en.hp * 2.2); en.maxHp = en.hp; en.atk = Math.floor(en.atk * 1.3); en.name += " (群體)"; }
     en.shield = 0;
-
     gameState.inBattle = true; gameState.canInput = true; gameState.currentEnemy = en; gameState.pStun = false;
     document.getElementById("battle-screen").style.display = "flex";
     document.getElementById("enemy-name").innerText = en.name;
     document.getElementById("enemy-name").style.color = (en.type === "hunter") ? "#ff4757" : (en.type === "guard" ? "#00d2ff" : elements[en.element].color);
     
-    // 還原元素標籤
     const tag = document.getElementById("enemy-element-tag");
     tag.innerText = elements[en.element].name;
     tag.style.backgroundColor = elements[en.element].color;
@@ -256,7 +262,7 @@ function startBattle(en) {
 
     let pDef = player.baseDef + player.armor.power;
     let normalDmg = Math.floor(Math.max(5, (en.atk - pDef) * getMult(en.element, player.armor.element)));
-    document.getElementById("enemy-stats-hint").innerText = `HP: ${en.maxHp} | 普攻: ~${normalDmg} | 技能頻率: 55%`;
+    document.getElementById("enemy-stats-hint").innerText = `HP: ${en.maxHp} | 普攻: ~${normalDmg} | 技能機率: 55%`;
     
     document.getElementById("action-buttons").innerHTML = `
         <button class="btn" onclick="handleAction('attack')">1. ⚔️ 攻擊</button>
@@ -264,7 +270,6 @@ function startBattle(en) {
         <button class="btn" style="background:#ff4d4d" onclick="handleAction('h_pot')">3. 🍷 紅水</button>
         <button class="btn" style="background:#3498db" onclick="handleAction('m_pot')">4. 🧪 藍水</button>
     `;
-    updateLog(`⚔️ 警告：遇到 ${en.name}！`);
     refreshBattleBars();
 }
 
@@ -285,8 +290,7 @@ function endBattle(win) {
     if (win) { 
         let gold = (gameState.currentEnemy.type === "hunter" ? 800 : (gameState.currentEnemy.type === "guard" ? 1200 : 200));
         player.exp += 90; player.gold += gold; gameState.currentEnemy.alive = false;
-        updateLog(`🏆 戰鬥結束！獲取金幣 ${gold}。`);
-        if(player.exp >= 100){ player.level++; player.exp=0; player.maxHp+=50; player.hp=player.maxHp; player.maxMp+=30; player.mp=player.maxMp; alert("等級提升！能力大幅增長！"); }
+        if(player.exp >= 100){ player.level++; player.exp=0; player.maxHp+=50; player.hp=player.maxHp; player.maxMp+=30; player.mp=player.maxMp; alert("等級提升！"); }
     }
     setTimeout(() => { gameState.inBattle = false; document.getElementById("battle-screen").style.display = "none"; document.getElementById("battle-log").innerHTML=""; updateUI(); }, 500);
 }
@@ -304,9 +308,9 @@ function refreshBattleBars() {
 
 function selectJob(j) {
     player.jobType = j;
-    if(j==='warrior') { player.job="聖教戰士"; player.maxHp=250; player.hp=250; player.mp=40; player.maxMp=40; player.weapon={name:"聖教重劍",power:15,element:"light"}; player.armor={name:"聖鋼鎧",power:12,element:"light"}; }
-    else if(j==='mage') { player.job="虛空法師"; player.maxHp=130; player.hp=130; player.mp=250; player.maxMp=250; player.weapon={name:"虛空法杖",power:10,element:"dark"}; player.armor={name:"幽冥長袍",power:8,element:"dark"}; }
-    else { player.job="寒霜盜賊"; player.maxHp=180; player.hp=180; player.mp=100; player.maxMp=100; player.weapon={name:"寒冰瞬刃",power:18,element:"ice"}; player.armor={name:"影織皮甲",power:10,element:"ice"}; }
+    if(j==='warrior') { player.job="戰士"; player.maxHp=250; player.hp=250; player.mp=40; player.maxMp=40; player.weapon={name:"聖教重劍",power:15,element:"light"}; player.armor={name:"聖鋼鎧",power:12,element:"light"}; }
+    else if(j==='mage') { player.job="法師"; player.maxHp=130; player.hp=130; player.mp=250; player.maxMp=250; player.weapon={name:"虛空法杖",power:10,element:"dark"}; player.armor={name:"幽冥長袍",power:8,element:"dark"}; }
+    else { player.job="盜賊"; player.maxHp=180; player.hp=180; player.mp=100; player.maxMp=100; player.weapon={name:"寒冰瞬刃",power:18,element:"ice"}; player.armor={name:"影織皮甲",power:10,element:"ice"}; }
     document.getElementById("start-screen").style.display = "none";
     updateUI();
 }
@@ -332,7 +336,6 @@ function updateUI() {
     document.getElementById("ui-tp-count").innerText = player.tpStones;
     document.getElementById("ui-atk").innerText = player.baseAtk + player.weapon.power;
     document.getElementById("ui-def").innerText = player.baseDef + player.armor.power;
-    // 還原底部裝備名稱
     document.getElementById("ui-weapon").innerText = player.weapon.name;
     document.getElementById("ui-armor").innerText = player.armor.name;
     document.getElementById("coord-x").innerText = worldX;
@@ -362,7 +365,6 @@ window.addEventListener("keydown", (e) => {
     let nx = player.tx, ny = player.ty;
     if (e.key === "ArrowUp") ny--; else if (e.key === "ArrowDown") ny++;
     else if (e.key === "ArrowLeft") nx--; else if (e.key === "ArrowRight") nx++; else return;
-    const id = `${worldX},worldY`;
     if (nx < 0 || nx >= MAP_SIZE || ny < 0 || ny >= MAP_SIZE) {
         if (nx < 0) { worldX--; player.tx = MAP_SIZE-1; } else if (nx >= MAP_SIZE) { worldX++; player.tx = 0; }
         else if (ny < 0) { worldY--; player.ty = MAP_SIZE-1; } else if (ny >= MAP_SIZE) { worldY++; player.ty = 0; }
