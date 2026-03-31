@@ -2,12 +2,14 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>永恆荒野 RPG - 咒語商人與技能特效版</title>
+    <title>永恆荒野 RPG - 完整功能回歸版</title>
     <style>
         body { background: #050505; color: white; display: flex; flex-direction: column; align-items: center; font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; margin: 0; overflow: hidden; }
         #game-container { position: relative; width: 900px; height: 600px; margin-top: 20px; border: 5px solid #34495e; background: #000; box-shadow: 0 0 50px rgba(0, 0, 0, 0.8); }
         canvas { display: block; }
         .overlay { display: none; position: absolute; top: 0; left: 0; width: 900px; height: 600px; background: rgba(0,0,0,0.95); flex-direction: column; align-items: center; z-index: 100; padding-top: 40px; }
+        
+        /* 戰鬥介面 */
         #battle-screen { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 860px; height: 530px; background: #0a0a0a; border: 4px solid #bdc3c7; border-radius: 20px; flex-direction: column; align-items: center; z-index: 110; }
         .bar-outer { width: 340px; margin: 8px 0; }
         .hp-bar-bg { width: 100%; height: 20px; background: #200; border: 2px solid #444; border-radius: 10px; overflow: hidden; position: relative; }
@@ -16,22 +18,24 @@
         .mp-bar-bg { width: 100%; height: 18px; background: #001; border: 2px solid #444; border-radius: 9px; overflow: hidden; position: relative; margin-top: 6px; }
         .mp-bar-fill { height: 100%; background: linear-gradient(90deg, #3498db, #2980b9); width: 100%; transition: width 0.3s; }
         .status-text { position: absolute; width: 100%; text-align: center; font-size: 11px; line-height: 18px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000; z-index: 5; }
+        
         .btn { padding: 10px 18px; background: #34495e; color: white; border: 1px solid #7f8c8d; cursor: pointer; margin: 3px; border-radius: 8px; font-weight: bold; font-size: 13px; min-width: 140px; }
         .btn:hover { background: #5d6d7e; border-color: #fff; }
-        .job-card { background: #1a1a1a; padding: 15px; border-radius: 10px; border: 1px solid #444; margin: 10px; width: 250px; text-align: center; }
-        #battle-log { background: rgba(0,0,0,0.6); width: 85%; height: 100px; margin: 10px; padding: 12px; font-size: 14px; color: #f1c40f; text-align: left; border: 1px solid #444; overflow-y: auto; border-radius: 5px; line-height: 1.6; position: relative;}
+        .btn:disabled { background: #222; color: #666; cursor: not-allowed; }
+
+        #battle-log { background: rgba(0,0,0,0.6); width: 85%; height: 100px; margin: 10px; padding: 12px; font-size: 14px; color: #f1c40f; text-align: left; border: 1px solid #444; overflow-y: auto; border-radius: 5px; line-height: 1.6; }
+        
+        /* 技能特效文字 */
+        #skill-effect-text {
+            position: absolute; top: 120px; left: 50%; transform: translateX(-50%);
+            font-size: 32px; font-weight: bold; text-shadow: 0 0 10px #fff;
+            opacity: 0; transition: all 0.5s; z-index: 120; pointer-events: none;
+        }
+        #skill-effect-text.show { opacity: 1; top: 80px; transform: translateX(-50%) scale(1.2); }
+
         #ui-panel { width: 870px; background: #1a1a1a; padding: 15px; margin-top: 10px; border-radius: 12px; display: grid; grid-template-columns: 1.2fr 1fr 1.2fr; border: 2px solid #2c3e50; gap: 10px; }
         .tag { font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: bold; margin-top: 5px; display: inline-block; }
-        .compare-pos { color: #2ecc71; font-weight: bold; }
-        .compare-neg { color: #e74c3c; font-weight: bold; }
-        
-        /* 技能釋放特效浮動文字 */
-        #skill-effect-text {
-            position: absolute; top: -40px; left: 50%; transform: translateX(-50%);
-            font-size: 28px; font-weight: bold; text-shadow: 0 0 10px #fff, 0 0 20px #fff;
-            opacity: 0; transition: opacity 0.3s, top 0.5s; z-index: 120; pointer-events: none;
-        }
-        #skill-effect-text.show { opacity: 1; top: -60px; }
+        .compare-pos { color: #2ecc71; } .compare-neg { color: #e74c3c; }
     </style>
 </head>
 <body>
@@ -39,22 +43,10 @@
 <div id="game-container">
     <div id="start-screen" class="overlay" style="display: flex;">
         <h1 style="color: #f39c12;">選擇你的職業</h1>
-        <div style="display: flex; flex-wrap: wrap; justify-content: center;">
-            <div class="job-card">
-                <b style="color: #f1c40f; font-size: 20px;">戰士</b>
-                <div style="font-size:12px; color:#bdc3c7; margin:8px 0;">[光屬性] 高坦度。初始習得【聖光裁決】。</div>
-                <button class="btn" onclick="selectJob('warrior')">選擇戰士</button>
-            </div>
-            <div class="job-card">
-                <b style="color: #8e44ad; font-size: 20px;">法師</b>
-                <div style="font-size:12px; color:#bdc3c7; margin:8px 0;">[全能] 初始習得【火球術】與【寒冰箭】。</div>
-                <button class="btn" onclick="selectJob('mage')">選擇法師</button>
-            </div>
-            <div class="job-card">
-                <b style="color: #74b9ff; font-size: 20px;">盜賊</b>
-                <div style="font-size:12px; color:#bdc3c7; margin:8px 0;">[暗屬性] 高爆發。初始習得【暗影刺殺】。</div>
-                <button class="btn" onclick="selectJob('rogue')">選擇盜賊</button>
-            </div>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn" onclick="selectJob('warrior')">戰士 (光)</button>
+            <button class="btn" onclick="selectJob('mage')">法師 (火/冰)</button>
+            <button class="btn" onclick="selectJob('rogue')">盜賊 (暗)</button>
         </div>
     </div>
 
@@ -62,8 +54,7 @@
     <canvas id="mainCanvas" width="900" height="600"></canvas>
 
     <div id="battle-screen">
-        <div id="skill-effect-text">技能名稱！</div>
-        
+        <div id="skill-effect-text"></div>
         <div id="enemy-box" style="margin-top: 20px; text-align: center;">
             <div id="enemy-name" style="font-size: 26px; font-weight: bold;">敵人</div>
             <div id="enemy-element-tag" class="tag">屬性</div>
@@ -76,12 +67,12 @@
             </div>
         </div>
         <div id="battle-log"></div>
-        <div style="width: 100%; display: flex; justify-content: space-around; align-items: flex-end;">
+        <div style="width: 95%; display: flex; justify-content: space-around; align-items: flex-end;">
             <div class="bar-outer">
                 <div class="hp-bar-bg"><div id="p-hp-fill" class="hp-bar-fill"></div><div id="p-hp-txt" class="status-text"></div></div>
                 <div class="mp-bar-bg"><div id="p-mp-fill" class="mp-bar-fill"></div><div id="p-mp-txt" class="status-text"></div></div>
             </div>
-            <div id="action-buttons" style="display: flex; flex-direction: column; gap: 3px; max-height: 180px; overflow-y: auto; padding: 5px;"></div>
+            <div id="action-buttons" style="display: flex; flex-wrap: wrap; max-width: 450px; gap: 5px; justify-content: center;"></div>
         </div>
         <button class="btn" style="background:#c0392b; margin-top:10px;" onclick="handleAction('escape')">逃跑</button>
     </div>
@@ -89,63 +80,30 @@
     <div id="shop-screen" class="overlay">
         <h1>避難所商店</h1>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 85%;">
-            <div style="background: #1a1a1a; padding: 15px; border: 1px solid #333; border-radius: 10px;">
+            <div style="background: #1a1a1a; padding: 15px; border-radius: 10px;">
                 <p>🍷 生命藥水 (80G) <button class="btn" style="min-width:50px" onclick="shopBuy('hp_pot')">買</button></p>
                 <p>🧪 魔法藥水 (60G) <button class="btn" style="min-width:50px" onclick="shopBuy('mp_pot')">買</button></p>
-                <p>🗡️ 戰鬥藥水 [ATK+10] (150G) <button class="btn" style="min-width:50px" onclick="shopBuy('atk_perm')">買</button></p>
-                <p>💎 生命核心 [HP+50] (150G) <button class="btn" style="min-width:50px" onclick="shopBuy('hp_perm')">買</button></p>
+                <p>🗡️ 攻擊核心 [ATK+10] (150G) <button class="btn" style="min-width:50px" onclick="shopBuy('atk_perm')">買</button></p>
             </div>
-            <div style="background: #1a1a1a; padding: 15px; border: 1px solid #333; border-radius: 10px;">
-                <p>🔮 傳送晶石 (120G) <button class="btn" style="min-width:50px" onclick="shopBuy('tp')">買</button></p>
-                <button class="btn" style="width:100%; margin-top:10px" onclick="shopRefresh()">刷新裝備 (60G)</button>
+            <div style="background: #1a1a1a; padding: 15px; border-radius: 10px;">
+                <button class="btn" style="width:100%" onclick="shopRefresh()">刷新裝備 (60G)</button>
                 <div id="shop-item-display" style="margin-top: 10px;"></div>
             </div>
         </div>
-        <button class="btn" style="margin-top: 15px;" onclick="toggleShop(false)">返回荒野</button>
+        <button class="btn" style="margin-top: 20px;" onclick="toggleShop(false)">返回荒野</button>
     </div>
 
     <div id="spell-shop-screen" class="overlay">
-        <h1 style="color: cyan;">神秘的咒語商人</h1>
-        <p style="color: #bdc3c7;">購買技能卷軸以習得永久咒語 (每個 500G)</p>
-        <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; width: 85%; margin-top: 20px;">
-            <div class="job-card" style="border-color: cyan;">
-                <b style="color: #e67e22;">火球術卷軸</b>
-                <div style="font-size:12px; color:#aaa; margin:5px 0;">釋放 1.8x 火屬性傷害 (20MP)。</div>
-                <button id="buy-spell-fire" class="btn" style="background: cyan; color: #000;" onclick="buySpell('fire', 500)">購買 (500G)</button>
-            </div>
-            <div class="job-card" style="border-color: cyan;">
-                <b style="color: #3498db;">寒冰箭卷軸</b>
-                <div style="font-size:12px; color:#aaa; margin:5px 0;">釋放 1.8x 冰屬性傷害 (20MP)。</div>
-                <button id="buy-spell-ice" class="btn" style="background: cyan; color: #000;" onclick="buySpell('ice', 500)">購買 (500G)</button>
-            </div>
-            <div class="job-card" style="border-color: cyan;">
-                <b style="color: #f1c40f;">聖光裁決卷軸</b>
-                <div style="font-size:12px; color:#aaa; margin:5px 0;">釋放 2.2x 光屬性傷害 (35MP)。</div>
-                <button id="buy-spell-light" class="btn" style="background: cyan; color: #000;" onclick="buySpell('light', 500)">購買 (500G)</button>
-            </div>
-            <div class="job-card" style="border-color: cyan;">
-                <b style="color: #8e44ad;">暗影刺殺卷軸</b>
-                <div style="font-size:12px; color:#aaa; margin:5px 0;">釋放 2.2x 暗屬性傷害 (35MP)。</div>
-                <button id="buy-spell-dark" class="btn" style="background: cyan; color: #000;" onclick="buySpell('dark', 500)">購買 (500G)</button>
-            </div>
-        </div>
-        <button class="btn" style="margin-top: 25px;" onclick="toggleSpellShop(false)">離開</button>
+        <h1 style="color: cyan;">神秘咒語商人</h1>
+        <div id="spell-list" style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; justify-content: center;"></div>
+        <button class="btn" style="margin-top: 20px;" onclick="toggleSpellShop(false)">離開</button>
     </div>
 </div>
 
 <div id="ui-panel">
-    <div>
-        <b id="ui-job-name" style="color:#3498db; font-size:18px;">職業</b> | LV.<span id="ui-lvl">1</span><br>
-        💰 金幣: <span id="ui-gold">0</span> | 🔮 傳送石(T): <span id="ui-tp-count">0</span>
-    </div>
-    <div style="border-left: 1px solid #333; padding-left: 10px;">
-        🧪 紅: <span id="ui-hpot">0</span> | 藍: <span id="ui-mpot">0</span><br>
-        🗡️ ATK: <span id="ui-atk">0</span> | 🛡️ DEF: <span id="ui-def">0</span>
-    </div>
-    <div style="border-left: 1px solid #333; padding-left: 10px; font-size: 13px;">
-        武器: <span id="ui-weapon">無</span><br>
-        防具: <span id="ui-armor">無</span>
-    </div>
+    <div><b id="ui-job-name">職業</b> | LV.<span id="ui-lvl">1</span><br>💰 金幣: <span id="ui-gold">0</span></div>
+    <div style="border-left:1px solid #333; padding-left:10px;">🧪 紅: <span id="ui-hpot">0</span> | 藍: <span id="ui-mpot">0</span><br>🗡️ ATK: <span id="ui-atk">0</span></div>
+    <div style="border-left:1px solid #333; padding-left:10px;">武器: <span id="ui-weapon">無</span><br>防具: <span id="ui-armor">無</span></div>
 </div>
 
 <script>
@@ -155,14 +113,14 @@ const TILE_SIZE = 50, MAP_SIZE = 15;
 
 let worldX = 0, worldY = 0;
 let maps = {}, enemiesOnMap = {}, spellMerchants = {};
-let gameState = { inBattle: false, canInput: true, currentEnemy: null, battleTimeout: null, pStun: false };
+let gameState = { inBattle: false, canInput: true, currentEnemy: null, battleTimeout: null };
 
 const elements = {
-    fire: { name: "🔥 火屬性", color: "#e67e22" },
-    ice: { name: "❄️ 冰屬性", color: "#3498db" },
-    light: { name: "☀️ 光屬性", color: "#f1c40f" },
-    dark: { name: "🌑 暗屬性", color: "#8e44ad" },
-    none: { name: "⚪ 無屬性", color: "#7f8c8d" }
+    fire: { name: "🔥 火", color: "#e67e22" },
+    ice: { name: "❄️ 冰", color: "#3498db" },
+    light: { name: "☀️ 光", color: "#f1c40f" },
+    dark: { name: "🌑 暗", color: "#8e44ad" },
+    none: { name: "⚪ 無", color: "#7f8c8d" }
 };
 
 const allSkills = {
@@ -175,10 +133,10 @@ const allSkills = {
 const player = {
     tx: 7, ty: 7, hp: 100, maxHp: 100, mp: 60, maxMp: 60,
     level: 1, exp: 0, gold: 800, job: "無", jobType: "",
-    baseAtk: 25, baseDef: 12, hpPotions: 3, mpPotions: 2, tpStones: 2,
+    baseAtk: 25, baseDef: 12, hpPotions: 3, mpPotions: 2,
     weapon: { name: "新手劍", power: 5, element: "none" },
     armor: { name: "新手衣", power: 5, element: "none" },
-    learnedSkills: [] // 玩家習得的技能ID列表
+    learnedSkills: []
 };
 
 function generateMap(wx, wy) {
@@ -188,14 +146,13 @@ function generateMap(wx, wy) {
     for (let y = 0; y < MAP_SIZE; y++) {
         grid[y] = [];
         for (let x = 0; x < MAP_SIZE; x++) {
-            if (x === 0 || y === 0 || x === MAP_SIZE - 1 || y === MAP_SIZE - 1) grid[y][x] = (Math.abs(x-7)<=1 || Math.abs(y-7)<=1) ? 0 : 1;
-            else if (wx===0 && wy===0 && x===7 && y===7) grid[y][x] = "shop";
-            else grid[y][x] = Math.random() < 0.12 ? 1 : 0;
+            if (wx===0 && wy===0 && x===7 && y===7) grid[y][x] = "shop";
+            else grid[y][x] = (x===0 || y===0 || x===MAP_SIZE-1 || y===MAP_SIZE-1) ? 1 : (Math.random() < 0.12 ? 1 : 0);
         }
     }
     maps[id] = grid;
 
-    // 生成咒語商人 (25%機率，不在 [0,0]地圖)
+    // 隨機商人生成
     if ((wx !== 0 || wy !== 0) && Math.random() < 0.25) {
         let sx, sy;
         do { sx = Math.floor(Math.random()*13)+1; sy = Math.floor(Math.random()*13)+1; } while (grid[sy][sx] !== 0);
@@ -205,18 +162,15 @@ function generateMap(wx, wy) {
     let enemies = [];
     let dist = Math.abs(wx) + Math.abs(wy);
     if (dist > 0) {
-        let count = 8 + Math.floor(Math.random()*4);
-        for(let i=0; i<count; i++) {
-            let elKeys = Object.keys(elements);
-            let el = elKeys[Math.floor(Math.random() * elKeys.length)];
+        for(let i=0; i<6; i++) {
             let ex, ey;
-            // 避開商人格
-            do { ex = Math.floor(Math.random()*13)+1; ey = Math.floor(Math.random()*13)+1; } 
-            while (grid[ey][ex] !== 0 || (spellMerchants[id] && spellMerchants[id].tx === ex && spellMerchants[id].ty === ey));
-            
-            let hp = (90 + dist * 35);
-            let atk = (35 + dist * 6);
-            enemies.push({ tx: ex, ty: ey, name: "荒野怪", type: "normal", hp: Math.floor(hp), maxHp: Math.floor(hp), atk: Math.floor(atk), element: el, alive: true, shield: 0 });
+            do { ex = Math.floor(Math.random()*13)+1; ey = Math.floor(Math.random()*13)+1; } while (grid[ey][ex] !== 0);
+            let elKeys = ['fire', 'ice', 'light', 'dark'];
+            enemies.push({ 
+                tx: ex, ty: ey, name: "荒野怪", 
+                hp: 100 + dist*35, maxHp: 100 + dist*35, shield: dist*15,
+                atk: 30 + dist*6, element: elKeys[Math.floor(Math.random()*4)], alive: true 
+            });
         }
     }
     enemiesOnMap[id] = enemies;
@@ -225,298 +179,221 @@ function generateMap(wx, wy) {
 function handleAction(type, skillId = null) {
     if (!gameState.canInput || !gameState.inBattle) return;
     const enemy = gameState.currentEnemy;
+    gameState.canInput = false;
 
-    if (type === 'attack' || type === 'special') {
-        gameState.canInput = false;
-        let dmg = 0;
-        if (type === 'attack') {
-            dmg = Math.floor(Math.max(5, (player.baseAtk + player.weapon.power - 10) * getMult(player.weapon.element, enemy.element)));
-            updateLog(`⚔️ 你發動攻擊，造成 ${dmg} 傷害。`);
-        } else {
-            // 使用習得技能
-            const skill = allSkills[skillId];
-            if (player.mp < skill.cost) { updateLog("❌ 魔力不足！"); gameState.canInput = true; return; }
-            player.mp -= cost = skill.cost;
-            
-            dmg = Math.floor((40 + player.level * 8 + (player.maxMp / 10)) * skill.mult * getMult(skill.el, enemy.element));
-            
-            // 顯示技能名稱特效
-            showSkillEffect(`${skill.icon} ${skill.name}！`, elements[skill.el].color);
-            updateLog(`✨ 釋放【${skill.name}】，對敵方造成 ${dmg} 點屬性傷害！`);
-        }
-
-        if (enemy.shield > 0) {
-            if (dmg <= enemy.shield) { enemy.shield -= dmg; updateLog(`🛡️ 傷害被護盾完全吸收！`); }
-            else { let overflow = dmg - enemy.shield; updateLog(`🛡️ 護盾粉碎！貫穿造成 ${Math.ceil(overflow)} 傷害。`); enemy.shield = 0; enemy.hp -= overflow; }
-        } else { enemy.hp -= dmg; }
+    if (type === 'attack') {
+        let dmg = Math.floor((player.baseAtk + player.weapon.power) * getMult(player.weapon.element, enemy.element));
+        updateLog(`⚔️ 你發動攻擊，造成 ${dmg} 傷害。`);
+        applyDamage(dmg);
+    } else if (type === 'special' && skillId) {
+        const skill = allSkills[skillId];
+        if (player.mp < skill.cost) { updateLog("❌ 魔力不足！"); gameState.canInput = true; return; }
+        player.mp -= skill.cost;
+        let dmg = Math.floor((45 + player.level * 10) * skill.mult * getMult(skill.el, enemy.element));
+        showSkillEffect(`${skill.icon} ${skill.name}！`, elements[skill.el].color);
+        updateLog(`✨ 釋放【${skill.name}】，造成 ${dmg} 傷害！`);
+        applyDamage(dmg);
     } else if (type === 'h_pot') {
-        if (player.hpPotions > 0) { player.hpPotions--; player.hp = Math.min(player.maxHp, player.hp + 100); updateLog("🍷 喝下紅水恢復 100 HP"); updateUI(); }
-    } else if (type === 'm_pot') {
-        if (player.mpPotions > 0) { player.mpPotions--; player.mp = Math.min(player.maxMp, player.mp + 50); updateLog("🧪 喝下藍水恢復 50 MP"); updateUI(); }
+        if (player.hpPotions > 0) { player.hpPotions--; player.hp = Math.min(player.maxHp, player.hp+80); updateLog("🍷 恢復 80 HP"); finishTurn(); }
+        else { updateLog("❌ 藥水不足"); gameState.canInput = true; }
     } else if (type === 'escape') {
-        if (Math.random() < 0.3) { endBattle(false); return; } else { updateLog("🏃 逃跑被攔截！"); gameState.canInput = false; }
+        if (Math.random() < 0.4) { updateLog("🏃 逃跑成功"); endBattle(false); }
+        else { updateLog("🏃 逃跑失敗"); finishTurn(); }
     }
-
-    refreshBattleBars();
-    if (enemy.hp <= 0) { clearTimeout(gameState.battleTimeout); setTimeout(() => endBattle(true), 400); }
-    else gameState.battleTimeout = setTimeout(enemyTurn, 800);
+    updateUI();
 }
 
-// 顯示技能名稱的特效
-function showSkillEffect(text, color) {
-    const effectEl = document.getElementById("skill-effect-text");
-    effectEl.innerText = text;
-    effectEl.style.color = color;
-    effectEl.classList.add("show");
+function applyDamage(dmg) {
+    const enemy = gameState.currentEnemy;
+    if (enemy.shield > 0) {
+        if (dmg <= enemy.shield) { enemy.shield -= dmg; updateLog("🛡️ 護盾吸收了傷害！"); }
+        else { let rem = dmg - enemy.shield; enemy.shield = 0; enemy.hp -= rem; updateLog("🛡️ 護盾粉碎！"); }
+    } else { enemy.hp -= dmg; }
     
-    // 1.5秒後自動消失
-    setTimeout(() => {
-        effectEl.classList.remove("show");
-    }, 1500);
+    refreshBars();
+    if (enemy.hp <= 0) setTimeout(() => endBattle(true), 500);
+    else finishTurn();
 }
+
+function finishTurn() { gameState.battleTimeout = setTimeout(enemyTurn, 800); }
 
 function enemyTurn() {
     if (!gameState.inBattle) return;
-    const enemy = gameState.currentEnemy;
-    const pDef = player.baseDef + player.armor.power;
-    
-    if (gameState.pStun) {
-        updateLog("😵 暈眩無法行動...");
-        gameState.pStun = false;
-    } else {
-        let dmg = Math.floor(Math.max(5, (enemy.atk - pDef) * getMult(enemy.element, player.armor.element)));
-        player.hp -= dmg;
-        updateLog(`👾 ${enemy.name} 攻擊：造成 ${dmg} 傷害。`);
-    }
-    
-    updateUI(); refreshBattleBars();
-    if (player.hp <= 0) { alert("你死在了荒野中..."); location.reload(); }
+    let dmg = Math.floor(gameState.currentEnemy.atk * getMult(gameState.currentEnemy.element, player.armor.element));
+    player.hp -= dmg;
+    updateLog(`👾 敵人攻擊，造成 ${dmg} 傷害。`);
+    refreshBars();
+    if (player.hp <= 0) { alert("冒險結束..."); location.reload(); }
     else gameState.canInput = true;
 }
 
+function showSkillEffect(txt, color) {
+    const el = document.getElementById("skill-effect-text");
+    el.innerText = txt; el.style.color = color; el.classList.add("show");
+    setTimeout(() => el.classList.remove("show"), 1000);
+}
+
 function startBattle(en) {
-    en.shield = 0; gameState.inBattle = true; gameState.canInput = true; gameState.currentEnemy = en; gameState.pStun = false;
+    gameState.inBattle = true; gameState.canInput = true; gameState.currentEnemy = en;
     document.getElementById("battle-screen").style.display = "flex";
     document.getElementById("enemy-name").innerText = en.name;
     document.getElementById("enemy-name").style.color = elements[en.element].color;
-    const tag = document.getElementById("enemy-element-tag");
-    tag.innerText = elements[en.element].name; tag.style.backgroundColor = elements[en.element].color; tag.style.color = (en.element === 'light') ? '#000' : '#fff';
-    
-    document.getElementById("enemy-stats-hint").innerText = `HP: ${en.maxHp} | 普攻: ~${Math.floor(Math.max(5, (en.atk - (player.baseDef + player.armor.power)) * getMult(en.element, player.armor.element)))}`;
-    
+    document.getElementById("enemy-element-tag").innerText = elements[en.element].name;
+    document.getElementById("enemy-element-tag").style.background = elements[en.element].color;
     updateActionButtons();
-    updateLog(`⚔️ 警告：遭遇 ${en.name}！`);
-    refreshBattleBars();
+    refreshBars();
 }
 
-// 根據習得技能動態更新戰鬥按鈕
 function updateActionButtons() {
-    const container = document.getElementById("action-buttons");
-    let html = `<button class="btn" onclick="handleAction('attack')">⚔️ 普攻 (1)</button>`;
-    
-    player.learnedSkills.forEach((skillId, index) => {
-        const skill = allSkills[skillId];
-        // 快捷鍵從 2 開始
-        html += `<button class="btn" style="background:${elements[skill.el].color}; color:${skill.el==='light'?'#000':'#fff'};" onclick="handleAction('special', '${skillId}')">${skill.icon} ${skill.name} (${skill.cost}MP) (${index+2})</button>`;
+    const box = document.getElementById("action-buttons");
+    let h = `<button class="btn" onclick="handleAction('attack')">⚔️ 普攻 (1)</button>`;
+    player.learnedSkills.forEach((sid, i) => {
+        const s = allSkills[sid];
+        h += `<button class="btn" style="background:${elements[s.el].color}" onclick="handleAction('special','${sid}')">${s.icon}${s.name}(${i+2})</button>`;
     });
-
-    // 藥水按鈕排在技能後面，但保持固定熱鍵在代碼邏輯中 (由監聽器處理)
-    html += `<button class="btn" style="background:#ff4d4d; margin-top:5px;" onclick="handleAction('h_pot')">🍷 紅水 (${player.hpPotions})</button>`;
-    html += `<button class="btn" style="background:#3498db" onclick="handleAction('m_pot')">🧪 藍水 (${player.mpPotions})</button>`;
-    
-    container.innerHTML = html;
-}
-
-// 咒語商店功能
-function toggleSpellShop(s) {
-    if (s) {
-        // 更新按鈕狀態（已習得則置灰）
-        Object.keys(allSkills).forEach(skillId => {
-            const btn = document.getElementById(`buy-spell-${skillId}`);
-            if (player.learnedSkills.includes(skillId)) {
-                btn.innerText = "已習得";
-                btn.style.background = "#555";
-                btn.disabled = true;
-            } else {
-                btn.innerText = "購買 (500G)";
-                btn.style.background = "cyan";
-                btn.disabled = false;
-            }
-        });
-    }
-    document.getElementById("spell-shop-screen").style.display = s ? "flex" : "none";
-}
-
-function buySpell(skillId, price) {
-    if (player.gold < price) { alert("金幣不足！"); return; }
-    if (player.learnedSkills.includes(skillId)) return;
-
-    player.gold -= price;
-    player.learnedSkills.push(skillId);
-    updateUI();
-    toggleSpellShop(true); // 刷新介面
-    alert(`習得了咒語：【${allSkills[skillId].name}】！可在戰鬥中使用。`);
-}
-
-// 基礎工具
-function getMult(a, d) {
-    if (a === "none" || d === "none") return (a!=="none"&&d==="none")?1.2:1;
-    if ((a==="light"&&d==="dark")||(a==="dark"&&d==="light")) return 1.5;
-    return (a==="fire"&&d==="ice")?0.5:(a==="ice"&&d==="fire")?2:1;
-}
-
-function updateLog(m) { 
-    const log = document.getElementById("battle-log"); log.innerHTML += `<div>${m}</div>`; log.scrollTop = log.scrollHeight;
-}
-
-function endBattle(win) {
-    clearTimeout(gameState.battleTimeout);
-    if (win) { 
-        player.exp += 90; player.gold += 200; gameState.currentEnemy.alive = false;
-        if(player.exp >= 100){ player.level++; player.exp=0; player.maxHp+=50; player.hp=player.maxHp; player.maxMp+=30; player.mp=player.maxMp; alert("等級提升！"); }
-    }
-    setTimeout(() => { gameState.inBattle = false; document.getElementById("battle-screen").style.display = "none"; document.getElementById("battle-log").innerHTML=""; document.getElementById("skill-effect-text").classList.remove("show"); updateUI(); }, 500);
-}
-
-function refreshBattleBars() {
-    const e = gameState.currentEnemy; if(!e) return;
-    document.getElementById("e-hp-fill").style.width = (Math.max(0, e.hp)/e.maxHp*100)+"%";
-    document.getElementById("e-hp-txt").innerText = `${Math.ceil(Math.max(0, e.hp))} / ${e.maxHp}`;
-    document.getElementById("p-hp-fill").style.width = (Math.max(0, player.hp)/player.maxHp*100)+"%";
-    document.getElementById("p-hp-txt").innerText = `${Math.ceil(player.hp)} / ${player.maxHp}`;
-    document.getElementById("p-mp-fill").style.width = (player.mp/player.maxMp*100)+"%";
-    document.getElementById("p-mp-txt").innerText = `${player.mp} / ${player.maxMp}`;
-}
-
-function respawn(isDeath = false) {
-    worldX = 0; worldY = 0; player.tx = 7; player.ty = 7;
-    if (isDeath) { player.hp = Math.floor(player.maxHp * 0.4); player.mp = Math.floor(player.maxMp * 0.4); }
-    else { player.hp = Math.min(player.maxHp, player.hp + 100); player.mp = Math.min(player.maxMp, player.mp + 50); }
-    generateMap(0,0); updateUI();
+    h += `<button class="btn" style="background:#ff4d4d" onclick="handleAction('h_pot')">🍷 紅水 (R)</button>`;
+    box.innerHTML = h;
 }
 
 function selectJob(j) {
     player.jobType = j;
-    player.learnedSkills = []; // 重置技能
-
-    if(j==='warrior') { 
-        player.job="戰士"; player.maxHp=250; player.hp=250; player.mp=40; player.maxMp=40; 
-        player.weapon={name:"聖教重劍",power:15,element:"light"}; player.armor={name:"聖鋼鎧",power:12,element:"light"}; 
-        player.learnedSkills.push('light'); // 戰士初始光技能
-    }
-    else if(j==='mage') { 
-        player.job="法師"; player.maxHp=130; player.hp=130; player.mp=250; player.maxMp=250; 
-        player.weapon={name:"虛空法杖",power:10,element:"dark"}; player.armor={name:"幽冥長袍",power:8,element:"dark"}; 
-        player.learnedSkills.push('fire', 'ice'); // 法師初始習得火冰
-    }
-    else if(j==='rogue') { 
-        player.job="盜賊"; player.maxHp=180; player.hp=180; player.mp=100; player.maxMp=100; 
-        player.weapon={name:"影界瞬刃",power:18,element:"dark"}; player.armor={name:"匿蹤皮甲",power:10,element:"dark"}; 
-        player.learnedSkills.push('dark'); // 盜賊初始暗技能
-    }
+    if(j==='warrior') { player.job="戰士"; player.learnedSkills=['light']; player.maxHp=250; player.hp=250; player.weapon.element="light"; }
+    else if(j==='mage') { player.job="法師"; player.learnedSkills=['fire','ice']; player.maxMp=200; player.mp=200; }
+    else { player.job="盜賊"; player.learnedSkills=['dark']; player.maxHp=180; player.hp=180; player.weapon.power=15; }
     document.getElementById("start-screen").style.display = "none";
     updateUI();
 }
 
-// 基礎商店功能
 function shopBuy(type) {
-    const c = { hp_pot: 80, mp_pot: 60, tp: 120, atk_perm: 150, hp_perm: 150 };
-    if (player.gold < c[type]) return;
-    player.gold -= c[type];
-    if (type === 'hp_pot') player.hpPotions++;
-    else if (type === 'mp_pot') player.mpPotions++;
-    else if (type === 'tp') player.tpStones++;
-    else if (type === 'atk_perm') player.baseAtk += 10;
-    else if (type === 'hp_perm') { player.maxHp += 50; player.hp += 50; }
-    updateUI();
-}
-
-function updateUI() {
-    document.getElementById("ui-lvl").innerText = player.level;
-    document.getElementById("ui-job-name").innerText = player.job;
-    document.getElementById("ui-gold").innerText = player.gold;
-    document.getElementById("ui-hpot").innerText = player.hpPotions;
-    document.getElementById("ui-mpot").innerText = player.mpPotions;
-    document.getElementById("ui-tp-count").innerText = player.tpStones;
-    document.getElementById("ui-atk").innerText = player.baseAtk + player.weapon.power;
-    document.getElementById("ui-def").innerText = player.baseDef + player.armor.power;
-    document.getElementById("ui-weapon").innerText = `${player.weapon.name} [强度:${player.weapon.power}]`;
-    document.getElementById("ui-armor").innerText = `${player.armor.name} [强度:${player.armor.power}]`;
-    document.getElementById("coord-x").innerText = worldX;
-    document.getElementById("coord-y").innerText = worldY;
+    const prices = { hp_pot: 80, mp_pot: 60, atk_perm: 150 };
+    if (player.gold >= prices[type]) {
+        player.gold -= prices[type];
+        if(type==='hp_pot') player.hpPotions++;
+        if(type==='mp_pot') player.mpPotions++;
+        if(type==='atk_perm') player.baseAtk += 10;
+        updateUI();
+    }
 }
 
 function shopRefresh() {
     if (player.gold < 60) return; player.gold -= 60;
     const isW = Math.random() > 0.5;
-    const p = Math.floor(40 + player.level * 8 + Math.random() * 20);
-    const elKeys = ['fire', 'ice', 'light', 'dark'];
-    const el = elKeys[Math.floor(Math.random() * elKeys.length)];
-    const n = isW ? "荒野神兵" : "守護聖裝";
-    const currentP = isW ? player.weapon.power : player.armor.power;
-    const diff = p - currentP;
-    const diffText = diff >= 0 ? `<span class="compare-pos">(+${diff})</span>` : `<span class="compare-neg">(${diff})</span>`;
+    const p = Math.floor(20 + player.level * 10 + Math.random() * 15);
+    const el = ['fire','ice','light','dark'][Math.floor(Math.random()*4)];
+    const curP = isW ? player.weapon.power : player.armor.power;
+    const diff = p - curP;
     document.getElementById("shop-item-display").innerHTML = `
-        <div style="border:1px solid #444; padding:10px; background:#222;">
-            <b>${n} (${elements[el].name})</b><br>強度: ${p} ${diffText}<br>
-            <button class="btn" style="min-width:100%; margin-top:5px;" onclick="executeBuy('${n}','${el}',${p},${isW})">購買 (320G)</button>
+        <div style="border:1px solid #444; padding:8px; background:#222;">
+            <b>${isW?'神兵':'聖甲'} (${elements[el].name})</b><br>
+            強度: ${p} <span class="${diff>=0?'compare-pos':'compare-neg'}">(${diff>=0?'+':''}${diff})</span><br>
+            <button class="btn" style="min-width:100%" onclick="buyEquip('${isW?'神兵':'聖甲'}','${el}',${p},${isW})">300G 購買</button>
         </div>`;
     updateUI();
 }
-function executeBuy(n,el,p,isW) { if(player.gold<320)return; player.gold-=320; if(isW)player.weapon={name:n,element:el,power:p}; else player.armor={name:n,element:el,power:p}; updateUI(); document.getElementById("shop-item-display").innerHTML=""; }
+
+function buyEquip(n,el,p,isW) {
+    if(player.gold < 300) return; player.gold -= 300;
+    if(isW) player.weapon = { name:n, element:el, power:p };
+    else player.armor = { name:n, element:el, power:p };
+    document.getElementById("shop-item-display").innerHTML = "";
+    updateUI();
+}
+
 function toggleShop(s) { document.getElementById("shop-screen").style.display = s?"flex":"none"; }
 
-// 按鍵監聽
-window.addEventListener("keydown", (e) => {
-    // 戰鬥中按鍵
-    if (gameState.inBattle && gameState.canInput) {
-        if (e.key === "1") { handleAction('attack'); return; }
-        
-        // 動態檢查技能快捷鍵 (2, 3, 4, 5...)
-        const skillIndex = parseInt(e.key) - 2;
-        if (!isNaN(skillIndex) && skillIndex >= 0 && skillIndex < player.learnedSkills.length) {
-            handleAction('special', player.learnedSkills[skillIndex]);
-            return;
-        }
+function toggleSpellShop(s) {
+    if(s) {
+        let h = "";
+        Object.keys(allSkills).forEach(sid => {
+            const owned = player.learnedSkills.includes(sid);
+            h += `<div style="text-align:center; padding:10px; border:1px solid #444; background:#111; width:130px;">
+                <b style="color:${elements[allSkills[sid].el].color}">${allSkills[sid].name}</b><br>
+                <button class="btn" style="min-width:100px" ${owned?'disabled':''} onclick="buySpell('${sid}')">${owned?'已習得':'500G'}</button>
+            </div>`;
+        });
+        document.getElementById("spell-list").innerHTML = h;
+    }
+    document.getElementById("spell-shop-screen").style.display = s?"flex":"none";
+}
 
-        // 藥水快捷鍵固定為 R (紅) 和 E (藍)，避免與動態技能衝突
-        if (e.key.toLowerCase() === "r") { handleAction('h_pot'); return; }
-        if (e.key.toLowerCase() === "e") { handleAction('m_pot'); return; }
+function buySpell(sid) {
+    if(player.gold >= 500) { player.gold -= 500; player.learnedSkills.push(sid); toggleSpellShop(true); updateUI(); }
+}
+
+function getMult(a, d) {
+    if(a==='fire' && d==='ice') return 1.8;
+    if(a==='ice' && d==='fire') return 0.6;
+    if(a==='light' && d==='dark') return 1.5;
+    if(a==='dark' && d==='light') return 1.5;
+    return 1;
+}
+
+function updateLog(m) {
+    const l = document.getElementById("battle-log");
+    l.innerHTML += `<div>${m}</div>`; l.scrollTop = l.scrollHeight;
+}
+
+function endBattle(win) {
+    if(win) { player.gold += 180; player.exp += 60; gameState.currentEnemy.alive = false; 
+        if(player.exp >= 100) { player.level++; player.exp=0; player.maxHp+=30; player.hp=player.maxHp; alert("升級了！"); }
+    }
+    gameState.inBattle = false;
+    document.getElementById("battle-screen").style.display = "none";
+    document.getElementById("battle-log").innerHTML = "";
+    updateUI();
+}
+
+function refreshBars() {
+    const e = gameState.currentEnemy;
+    document.getElementById("e-hp-fill").style.width = (e.hp/e.maxHp*100) + "%";
+    document.getElementById("e-shield-fill").style.width = (e.shield/e.maxHp*100) + "%";
+    document.getElementById("e-hp-txt").innerText = `HP: ${Math.ceil(e.hp)} | SH: ${Math.ceil(e.shield)}`;
+    document.getElementById("p-hp-fill").style.width = (player.hp/player.maxHp*100) + "%";
+    document.getElementById("p-hp-txt").innerText = `${Math.ceil(player.hp)}/${player.maxHp}`;
+    document.getElementById("p-mp-fill").style.width = (player.mp/player.maxMp*100) + "%";
+    document.getElementById("p-mp-txt").innerText = `${player.mp}/${player.maxMp}`;
+}
+
+function updateUI() {
+    document.getElementById("ui-job-name").innerText = player.job;
+    document.getElementById("ui-lvl").innerText = player.level;
+    document.getElementById("ui-gold").innerText = player.gold;
+    document.getElementById("ui-hpot").innerText = player.hpPotions;
+    document.getElementById("ui-mpot").innerText = player.mpPotions;
+    document.getElementById("ui-atk").innerText = player.baseAtk + player.weapon.power;
+    document.getElementById("ui-weapon").innerText = `${player.weapon.name}(${elements[player.weapon.element].name})`;
+    document.getElementById("ui-armor").innerText = player.armor.name;
+    document.getElementById("coord-x").innerText = worldX;
+    document.getElementById("coord-y").innerText = worldY;
+}
+
+window.addEventListener("keydown", (e) => {
+    if(gameState.inBattle && gameState.canInput) {
+        if(e.key === "1") handleAction('attack');
+        if(e.key.toLowerCase() === "r") handleAction('h_pot');
+        let sIdx = parseInt(e.key) - 2;
+        if(sIdx >= 0 && sIdx < player.learnedSkills.length) handleAction('special', player.learnedSkills[sIdx]);
         return;
     }
-
-    // 介面開啟時禁用移動與 T 鍵
-    if (document.querySelector(".overlay[style*='flex']")) return;
-
-    // T 鍵傳送
-    if (e.key.toLowerCase() === "t") { if (player.tpStones > 0) { player.tpStones--; respawn(false); alert("傳送成功！"); } else alert("晶石不足！"); updateUI(); return; }
-    
-    // 移動
+    if(document.querySelector(".overlay[style*='flex']")) return;
     let nx = player.tx, ny = player.ty;
-    if (e.key === "ArrowUp") ny--; else if (e.key === "ArrowDown") ny++;
-    else if (e.key === "ArrowLeft") nx--; else if (e.key === "ArrowRight") nx++; else return;
+    if(e.key === "ArrowUp") ny--; else if(e.key === "ArrowDown") ny++;
+    else if(e.key === "ArrowLeft") nx--; else if(e.key === "ArrowRight") nx++; else return;
 
     const id = `${worldX},${worldY}`;
-    const mapsId = maps[id];
-
-    if (nx < 0 || nx >= MAP_SIZE || ny < 0 || ny >= MAP_SIZE) {
-        if (nx < 0) { worldX--; player.tx = MAP_SIZE-1; } else if (nx >= MAP_SIZE) { worldX++; player.tx = 0; }
-        else if (ny < 0) { worldY--; player.ty = MAP_SIZE-1; } else if (ny >= MAP_SIZE) { worldY++; player.ty = 0; }
+    if(nx<0 || nx>=MAP_SIZE || ny<0 || ny>=MAP_SIZE) {
+        if(nx<0) { worldX--; player.tx=MAP_SIZE-1; } else if(nx>=MAP_SIZE) { worldX++; player.tx=0; }
+        else if(ny<0) { worldY--; player.ty=MAP_SIZE-1; } else if(ny>=MAP_SIZE) { worldY++; player.ty=0; }
         generateMap(worldX, worldY);
-    } else if (mapsId[ny][nx] !== 1) {
-        player.tx = nx; player.ty = ny;
-        
-        // 檢查避難所商店
-        if (mapsId[ny][nx] === "shop") toggleShop(true);
-        
-        // 檢查咒語商人
-        if (spellMerchants[id] && spellMerchants[id].tx === nx && spellMerchants[id].ty === ny) {
-            toggleSpellShop(true);
+    } else {
+        let tile = maps[id][ny][nx];
+        if(tile !== 1) {
+            player.tx = nx; player.ty = ny;
+            if(tile === "shop") toggleShop(true);
+            if(spellMerchants[id] && spellMerchants[id].tx === nx && spellMerchants[id].ty === ny) toggleSpellShop(true);
+            let en = (enemiesOnMap[id]||[]).find(et => et.alive && et.tx === nx && et.ty === ny);
+            if(en) startBattle(en);
         }
-        
-        // 檢查敵人
-        let hit = (enemiesOnMap[id] || []).find(en => en.alive && en.tx === nx && en.ty === ny);
-        if (hit) startBattle(hit);
     }
     updateUI();
 });
@@ -525,26 +402,26 @@ function draw() {
     ctx.fillStyle = "#000"; ctx.fillRect(0,0,900,600);
     const ox = 450 - (player.tx * TILE_SIZE + 25), oy = 300 - (player.ty * TILE_SIZE + 25);
     ctx.save(); ctx.translate(ox, oy);
-    const id = `${worldX},${worldY}`; const grid = maps[id];
-    for (let y=0; y<MAP_SIZE; y++) {
-        for (let x=0; x<MAP_SIZE; x++) {
-            let t = grid[y][x]; ctx.fillStyle = (t===1)?"#2c3e50":(t==="shop")?"#f1c40f":"#0a0a0a";
-            ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE, 48, 48);
+    const id = `${worldX},${worldY}`;
+    if(maps[id]) {
+        for(let y=0; y<MAP_SIZE; y++) {
+            for(let x=0; x<MAP_SIZE; x++) {
+                let t = maps[id][y][x];
+                ctx.fillStyle = t === 1 ? "#2c3e50" : t === "shop" ? "#f1c40f" : "#0a0a0a";
+                ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE, 48, 48);
+            }
         }
+        if(spellMerchants[id]) { 
+            ctx.fillStyle = "cyan"; ctx.fillRect(spellMerchants[id].tx*TILE_SIZE+10, spellMerchants[id].ty*TILE_SIZE+10, 30, 30);
+            ctx.strokeStyle = "white"; ctx.strokeRect(spellMerchants[id].tx*TILE_SIZE+8, spellMerchants[id].ty*TILE_SIZE+8, 34, 34);
+        }
+        (enemiesOnMap[id]||[]).forEach(en => { 
+            if(en.alive) { 
+                ctx.fillStyle = elements[en.element].color; 
+                ctx.fillRect(en.tx*TILE_SIZE+12, en.ty*TILE_SIZE+12, 26, 26); 
+            } 
+        });
     }
-    
-    // 繪製咒語商人
-    if (spellMerchants[id]) {
-        ctx.fillStyle = "cyan";
-        ctx.fillRect(spellMerchants[id].tx*TILE_SIZE+10, spellMerchants[id].ty*TILE_SIZE+10, 30, 30);
-        ctx.strokeStyle = "white"; ctx.strokeRect(spellMerchants[id].tx*TILE_SIZE+8, spellMerchants[id].ty*TILE_SIZE+8, 34, 34);
-    }
-
-    // 繪製敵人
-    (enemiesOnMap[id] || []).forEach(en => { 
-        if(en.alive){ ctx.fillStyle = elements[en.element].color; ctx.fillRect(en.tx*TILE_SIZE+12, en.ty*TILE_SIZE+12, 26, 26); } 
-    });
-    
     ctx.fillStyle = "#fff"; ctx.fillRect(player.tx*TILE_SIZE+15, player.ty*TILE_SIZE+15, 20, 20);
     ctx.restore(); requestAnimationFrame(draw);
 }
